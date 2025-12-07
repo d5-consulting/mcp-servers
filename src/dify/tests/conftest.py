@@ -4,7 +4,7 @@ import pytest
 from fastmcp import Context
 
 
-@pytest.fixture
+@pytest.fixture(scope="function")
 async def mock_context():
     """Create a mock FastMCP context for testing."""
 
