@@ -26,13 +26,14 @@ from dify.tools import DifyClient  # noqa: E402
 mcp = FastMCP("Composite: Dify + Browser")
 
 
-# Initialize Dify client on startup - FastMCP will manage the context
-@mcp.tool()
-async def _init_dify(ctx: Context) -> str:
-    """Internal tool to initialize Dify client (not meant to be called directly)."""
-    if not hasattr(ctx.request_context.state, "client"):
-        ctx.request_context.state.client = DifyClient()
-    return "Dify client initialized"
+# Lifecycle hook to initialize Dify client
+@mcp.lifespan()
+async def lifespan(request_context):
+    """Initialize Dify client for the session."""
+    client = DifyClient()
+    request_context.state.client = client
+    yield
+    await client.close()
 
 
 # Register Dify tools with prefixed names

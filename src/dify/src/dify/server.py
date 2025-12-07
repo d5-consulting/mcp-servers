@@ -30,6 +30,7 @@ async def lifespan(request_context):
     client = DifyClient()
     request_context.state.client = client
     yield
+    await client.close()
 
 
 # Register tools

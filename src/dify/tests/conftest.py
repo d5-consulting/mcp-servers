@@ -5,7 +5,7 @@ from fastmcp import Context
 
 
 @pytest.fixture
-def mock_context():
+async def mock_context():
     """Create a mock FastMCP context for testing."""
 
     class MockState:
@@ -27,4 +27,7 @@ def mock_context():
         def __init__(self):
             self.request_context = MockRequestContext()
 
-    return MockContext()
+    ctx = MockContext()
+    yield ctx
+    # Clean up the HTTP client
+    await ctx.request_context.state.client.close()
