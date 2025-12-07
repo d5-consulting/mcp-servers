@@ -5,7 +5,7 @@ from fastmcp import FastMCP
 
 load_dotenv()
 
-mcp = FastMCP(os.getenv("NAME", "chroma"))
+mcp = FastMCP(os.getenv("NAME", "vectorstore"))
 
 from . import server, tools  # noqa: F401, E402
 

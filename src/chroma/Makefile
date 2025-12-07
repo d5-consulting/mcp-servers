@@ -23,10 +23,10 @@ up:
 	docker compose up
 
 in:
-	docker compose run -it mcp bash
+	docker compose run -it vectorstore bash
 
 serve:
-	uv run python -m chroma
+	uv run python -m vectorstore
 
 clean:
 	-rm .DS_Store

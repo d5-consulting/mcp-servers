@@ -1,7 +1,7 @@
 import json
 import pytest
 
-from chroma import mcp
+from vectorstore import mcp
 
 
 def get_tool(name: str):

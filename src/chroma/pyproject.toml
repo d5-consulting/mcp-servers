@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "chroma"
+name = "vectorstore"
 version = "0.1.0"
 description = "an mcp server for chromadb vector store operations"
 readme = "README.md"
@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/chroma"]
+packages = ["src/vectorstore"]
 
 [dependency-groups]
 dev = [

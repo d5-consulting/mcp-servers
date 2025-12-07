@@ -1,4 +1,4 @@
-# ChromaDB MCP Server
+# Vectorstore MCP Server
 
 An MCP server for ChromaDB vector store operations.
 
@@ -12,7 +12,7 @@ An MCP server for ChromaDB vector store operations.
 ## Installation
 
 ```bash
-cd chroma
+cd vectorstore
 uv sync
 ```
 
@@ -22,10 +22,10 @@ uv sync
 
 ```bash
 # SSE transport (default)
-uv run python -m chroma
+uv run python -m vectorstore
 
 # stdio transport
-TRANSPORT=stdio uv run python -m chroma
+TRANSPORT=stdio uv run python -m vectorstore
 ```
 
 ### Environment Variables
@@ -33,7 +33,7 @@ TRANSPORT=stdio uv run python -m chroma
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CHROMA_PATH` | `./chroma_data` | Path for persistent storage |
-| `NAME` | `chroma` | Server name |
+| `NAME` | `vectorstore` | Server name |
 | `TRANSPORT` | `sse` | Transport type (`sse` or `stdio`) |
 | `HOST` | `0.0.0.0` | Host to bind |
 | `PORT` | `8002` | Port to bind |
@@ -46,9 +46,9 @@ Add to your Claude Desktop config:
 ```json
 {
   "mcpServers": {
-    "chroma": {
+    "vectorstore": {
       "command": "uv",
-      "args": ["run", "--directory", "/path/to/chroma", "python", "-m", "chroma"],
+      "args": ["run", "--directory", "/path/to/vectorstore", "python", "-m", "vectorstore"],
       "env": {
         "TRANSPORT": "stdio",
         "CHROMA_PATH": "/path/to/chroma_data"

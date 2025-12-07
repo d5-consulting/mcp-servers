@@ -1,11 +1,11 @@
 services:
-  chroma:
+  vectorstore:
     build: .
     ports:
       - "8002:8002"
     volumes:
       - ./workspace:/workspace
-      - ./src:/chroma/src
+      - ./src:/vectorstore/src
     environment:
       - TRANSPORT=sse
     command: make serve

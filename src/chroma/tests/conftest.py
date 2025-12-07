@@ -15,14 +15,14 @@ def temp_chroma_path(tmp_path):
     yield chroma_path
 
     # Cleanup - reset client singleton
-    from chroma import tools
+    from vectorstore import tools
     tools._client = None
 
 
 @pytest.fixture
 def sample_collection(temp_chroma_path):
     """Create a sample collection with test documents."""
-    from chroma.tools import _get_client
+    from vectorstore.tools import _get_client
 
     client = _get_client()
     collection = client.create_collection("test_collection")
