@@ -1,0 +1,9 @@
+services:
+  langquery:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./workspace:/workspace
+      - ./src:/langquery/src
+    command: make serve
