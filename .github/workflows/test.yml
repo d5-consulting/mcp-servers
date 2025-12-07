@@ -36,6 +36,11 @@ jobs:
         working-directory: src/${{ matrix.server }}
         run: uv sync --dev
 
+      - name: Install Playwright browsers
+        if: matrix.server == 'browser'
+        working-directory: src/${{ matrix.server }}
+        run: uv run playwright install chromium
+
       - name: Run tests for ${{ matrix.server }}
         working-directory: src/${{ matrix.server }}
         run: uv run pytest -v
