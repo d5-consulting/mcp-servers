@@ -66,6 +66,8 @@ def validate_document(doc_path: Path) -> bool:
             filter_name = FILTER_PPTX
         case ".xlsx":
             filter_name = FILTER_XLSX
+        case _:
+            raise ValueError(f"Unsupported file type: {doc_path.suffix}")
 
     with tempfile.TemporaryDirectory() as temp_dir:
         try:
@@ -101,6 +103,11 @@ def validate_document(doc_path: Path) -> bool:
 
 def condense_xml(xml_file: Path) -> None:
     """Strip unnecessary whitespace and remove comments."""
+    # Protect against resource exhaustion - limit XML file size to 10MB
+    MAX_XML_SIZE = 10 * 1024 * 1024
+    if xml_file.stat().st_size > MAX_XML_SIZE:
+        raise ValueError(f"XML file too large: {xml_file} ({xml_file.stat().st_size} bytes)")
+
     with open(xml_file, "r", encoding="utf-8") as f:
         dom = defusedxml.minidom.parse(f)
 

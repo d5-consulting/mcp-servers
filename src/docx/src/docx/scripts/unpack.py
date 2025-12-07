@@ -20,10 +20,22 @@ def unpack_document(input_file, output_dir):
     """
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
-    zipfile.ZipFile(input_file).extractall(output_path)
 
+    # Extract with path traversal protection
+    with zipfile.ZipFile(input_file) as zf:
+        for member in zf.namelist():
+            member_path = output_path / member
+            # Prevent path traversal attacks
+            if not member_path.resolve().is_relative_to(output_path.resolve()):
+                raise ValueError(f"Attempted path traversal: {member}")
+        zf.extractall(output_path)
+
+    # Protect against resource exhaustion - limit XML file size to 10MB
+    MAX_XML_SIZE = 10 * 1024 * 1024
     xml_files = list(output_path.rglob("*.xml")) + list(output_path.rglob("*.rels"))
     for xml_file in xml_files:
+        if xml_file.stat().st_size > MAX_XML_SIZE:
+            raise ValueError(f"XML file too large: {xml_file} ({xml_file.stat().st_size} bytes)")
         content = xml_file.read_text(encoding="utf-8")
         dom = defusedxml.minidom.parseString(content)
         xml_file.write_bytes(dom.toprettyxml(indent="  ", encoding="ascii"))
