@@ -14,10 +14,12 @@ jobs:
       matrix:
         server:
           - browser
+          - docx
           - langquery
           - pdf
           - pptx
           - vectorstore
+          - xlsx
 
     steps:
       - uses: actions/checkout@v4
