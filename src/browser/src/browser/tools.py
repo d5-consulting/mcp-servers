@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import os
+import threading
 from contextlib import asynccontextmanager
 from functools import wraps
 from typing import Optional
@@ -16,30 +17,77 @@ _playwright = None
 _page_lock: Optional[asyncio.Lock] = None  # Lock to prevent concurrent page access
 _browser_lock: Optional[asyncio.Lock] = None  # Lock for browser initialization
 
+# Thread lock to protect lock initialization (prevents race conditions during lock creation)
+_lock_init_mutex = threading.Lock()
+
 # Configuration
 DEFAULT_TIMEOUT = int(os.getenv("BROWSER_TIMEOUT", "30000"))  # 30 seconds
 DEFAULT_NAVIGATION_TIMEOUT = int(os.getenv("NAVIGATION_TIMEOUT", "60000"))  # 60 seconds
 
+# Timeout constants for internal operations
+HEALTH_CHECK_TIMEOUT = 5.0  # Timeout for page health checks
+CONTENT_EVAL_TIMEOUT = 10.0  # Timeout for content evaluation
+SCRIPT_EVAL_TIMEOUT = 30.0  # Timeout for JavaScript evaluation
 
-def _get_lock(lock: Optional[asyncio.Lock]) -> asyncio.Lock:
-    """Get or create lock for current event loop."""
+
+def _ensure_lock(lock_name: str) -> asyncio.Lock:
+    """Ensure a lock exists for the current event loop.
+
+    This function is thread-safe and ensures the same lock instance is returned
+    for each lock name within the same event loop.
+
+    Args:
+        lock_name: Either "_page_lock" or "_browser_lock"
+
+    Returns:
+        The lock instance for the current event loop
+    """
+    global _page_lock, _browser_lock, _lock_init_mutex
+
+    # Get the current lock value
+    current_lock = _page_lock if lock_name == "_page_lock" else _browser_lock
+
     try:
         loop = asyncio.get_running_loop()
-        if lock is None or (hasattr(lock, "_loop") and lock._loop is not loop):
-            return asyncio.Lock()
-        return lock
+        # Check if we need to create a new lock
+        if current_lock is None or (hasattr(current_lock, "_loop") and current_lock._loop is not loop):
+            # Use thread lock to prevent race conditions during lock creation
+            with _lock_init_mutex:
+                # Double-check after acquiring mutex
+                current_lock = _page_lock if lock_name == "_page_lock" else _browser_lock
+                if current_lock is None or (hasattr(current_lock, "_loop") and current_lock._loop is not loop):
+                    # Create new lock for this event loop
+                    new_lock = asyncio.Lock()
+                    # Update the global variable
+                    if lock_name == "_page_lock":
+                        _page_lock = new_lock
+                    else:
+                        _browser_lock = new_lock
+                    return new_lock
+        return current_lock
     except RuntimeError:
-        return lock or asyncio.Lock()
+        # No event loop running - shouldn't happen in async context
+        if current_lock is None:
+            with _lock_init_mutex:
+                new_lock = asyncio.Lock()
+                if lock_name == "_page_lock":
+                    _page_lock = new_lock
+                else:
+                    _browser_lock = new_lock
+                return new_lock
+        return current_lock
 
 
 def handle_browser_errors(func):
-    """Decorator to handle browser errors and auto-recover."""
+    """Decorator to handle browser errors and auto-recover.
+
+    Acquires _page_lock to ensure thread-safe access to page operations.
+    """
 
     @wraps(func)
     async def wrapper(*args, **kwargs):
-        global _page_lock
-        _page_lock = _get_lock(_page_lock)
-        async with _page_lock:
+        page_lock = _ensure_lock("_page_lock")
+        async with page_lock:
             try:
                 return await func(*args, **kwargs)
             except TimeoutError as e:
@@ -69,9 +117,8 @@ async def _reset_page_unsafe():
 
 async def _reset_page():
     """Reset the page if it's in a bad state. Thread-safe version."""
-    global _page_lock
-    _page_lock = _get_lock(_page_lock)
-    async with _page_lock:
+    page_lock = _ensure_lock("_page_lock")
+    async with page_lock:
         await _reset_page_unsafe()
 
 
@@ -83,7 +130,7 @@ async def _is_page_healthy_unsafe() -> bool:
     try:
         # Try to evaluate a simple script to check if page is responsive
         # Add a timeout to prevent hanging
-        await asyncio.wait_for(_page.evaluate("1 + 1"), timeout=5.0)
+        await asyncio.wait_for(_page.evaluate("1 + 1"), timeout=HEALTH_CHECK_TIMEOUT)
         return True
     except (asyncio.TimeoutError, Exception):
         return False
@@ -92,20 +139,24 @@ async def _is_page_healthy_unsafe() -> bool:
 @asynccontextmanager
 async def get_browser():
     """Get or create browser instance."""
-    global _browser, _playwright, _browser_lock
-    _browser_lock = _get_lock(_browser_lock)
-    async with _browser_lock:
+    global _browser, _playwright
+    browser_lock = _ensure_lock("_browser_lock")
+    async with browser_lock:
         if _browser is None:
             try:
                 _playwright = await async_playwright().start()
+                # Build browser args list
+                browser_args = [
+                    "--disable-dev-shm-usage",
+                    "--disable-blink-features=AutomationControlled",
+                    "--disable-extensions",
+                ]
+                if os.getenv("NO_SANDBOX", "false").lower() == "true":
+                    browser_args.append("--no-sandbox")
+
                 _browser = await _playwright.chromium.launch(
                     headless=os.getenv("HEADLESS", "false").lower() == "true",
-                    args=[
-                        "--disable-dev-shm-usage",
-                        "--disable-blink-features=AutomationControlled",
-                        "--disable-extensions",
-                        "--no-sandbox" if os.getenv("NO_SANDBOX", "false").lower() == "true" else "",
-                    ],
+                    args=browser_args,
                 )
             except Exception as e:
                 if _playwright:
@@ -134,9 +185,8 @@ async def get_page_unsafe() -> Page:
 
 async def get_page() -> Page:
     """Get or create page instance. Thread-safe version."""
-    global _page_lock
-    _page_lock = _get_lock(_page_lock)
-    async with _page_lock:
+    page_lock = _ensure_lock("_page_lock")
+    async with page_lock:
         return await get_page_unsafe()
 
 
@@ -195,7 +245,7 @@ async def get_content(max_length: int = 10000) -> str:
     # Add timeout to prevent hanging
     text = await asyncio.wait_for(
         page.evaluate("() => document.body.innerText || document.body.textContent || ''"),
-        timeout=10.0
+        timeout=CONTENT_EVAL_TIMEOUT
     )
     # Return a truncated version to avoid overwhelming the model
     if len(text) > max_length:
@@ -317,7 +367,7 @@ async def evaluate(script: str) -> str:
     """Execute JavaScript in the browser and return the result."""
     page = await get_page_unsafe()
     # Add timeout to prevent hanging
-    result = await asyncio.wait_for(page.evaluate(script), timeout=30.0)
+    result = await asyncio.wait_for(page.evaluate(script), timeout=SCRIPT_EVAL_TIMEOUT)
     return str(result)
 
 
@@ -350,24 +400,30 @@ async def wait_for_navigation(timeout: int = 30000) -> str:
 
 
 @mcp.tool()
-@handle_browser_errors
 async def close_browser() -> str:
-    """Close the browser and clean up resources."""
+    """Close the browser and clean up resources.
+
+    Note: This function manually handles locking in the correct order
+    (browser_lock -> page_lock) to avoid deadlocks.
+    """
     global _browser, _page, _playwright
 
-    # First close the page (we already have page_lock from decorator)
-    try:
-        if _page and not _page.is_closed():
-            await _page.close()
-    except Exception:
-        pass
-    finally:
-        _page = None
+    # Acquire locks in consistent order: browser_lock first, then page_lock
+    browser_lock = _ensure_lock("_browser_lock")
+    page_lock = _ensure_lock("_page_lock")
 
-    # Then close browser and playwright
-    global _browser_lock
-    _browser_lock = _get_lock(_browser_lock)
-    async with _browser_lock:
+    async with browser_lock:
+        async with page_lock:
+            # Close the page first
+            try:
+                if _page and not _page.is_closed():
+                    await _page.close()
+            except Exception:
+                pass
+            finally:
+                _page = None
+
+        # Close browser and playwright (outside page_lock)
         try:
             if _browser:
                 await _browser.close()
