@@ -1,0 +1,12 @@
+services:
+  xlsx:
+    build: .
+    ports:
+      - "8004:8004"
+    volumes:
+      - ./workspace:/workspace
+      - ./src:/xlsx/src
+    environment:
+      - TRANSPORT=sse
+      - PORT=8004
+    command: make serve

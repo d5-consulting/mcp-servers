@@ -5,15 +5,15 @@ help:
 	@echo "  make install     - install dependencies and package in development mode"
 	@echo "  make build       - build docker images"
 	@echo "  make up          - start docker compose services"
-	@echo "  make in          - run interactive bash shell in pdf container"
+	@echo "  make in          - run interactive bash shell in docx container"
 	@echo "  make serve       - run the MCP server with auto-reload"
 	@echo "  make test        - run the test suite with pytest"
-	@echo "  make lint        - format and lint code with isort and ruff"
+	@echo "  make lint        - format and lint code with ruff"
 	@echo "  make clean       - clean up temporary and cache files"
 	@echo "  make pre-commit  - run lint and clean before committing"
 
 install:
-	uv sync --extra ocr
+	uv sync
 	uv pip install -e .
 
 build:
@@ -23,10 +23,10 @@ up:
 	docker compose up
 
 in:
-	docker compose run -it pdf bash
+	docker compose run -it docx bash
 
 serve:
-	uv run python -m pdf --reload
+	uv run python -m docx
 
 clean:
 	-rm .DS_Store
@@ -41,7 +41,6 @@ clean:
 	find . -name "*.egg-info" -type d -exec rm -rf {} +
 
 lint:
-	uv run isort .
 	uv run ruff check --fix .
 	uv run ruff format .
 
