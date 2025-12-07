@@ -44,3 +44,5 @@ jobs:
       - name: Run tests for ${{ matrix.server }}
         working-directory: src/${{ matrix.server }}
         run: uv run pytest -v
+        env:
+          HEADLESS: ${{ matrix.server == 'browser' && 'true' || '' }}
