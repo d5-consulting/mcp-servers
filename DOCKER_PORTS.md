@@ -13,7 +13,8 @@ This document tracks port assignments for all MCP servers to prevent conflicts w
 | docx         | 8005 | http://localhost:8005/sse     | Word document operations                 |
 | langquery    | 8006 | http://localhost:8006/sse     | Language query operations                |
 | browser      | 8007 | http://localhost:8007/sse     | Browser automation (Playwright)          |
-| **composite**| **8000** | **http://localhost:8000/sse** | **Unified server (all enabled servers)** |
+| **composite**| **8000** | **http://localhost:8000/sse** | **Unified server (all servers bundled)** |
+| **proxy**    | **8000** | **http://localhost:8000/sse** | **Lightweight proxy (routes to backends)** |
 
 ## Usage Notes
 
@@ -28,32 +29,48 @@ docker compose up -d
 
 ### Running Composite Server
 
-The composite server combines multiple servers into one endpoint:
+The composite server bundles all MCP servers into one container:
 
 ```bash
 cd src/composite
 docker compose up -d
 ```
 
-**Important**: Do NOT run individual servers if composite is configured to use them - this will cause port conflicts and duplicate functionality.
+**Use composite when:**
+- You want simplest deployment (one container)
+- Latency is critical (no network overhead)
+- You always need multiple servers together
+
+### Running Proxy Server
+
+The proxy server routes requests to independent backend containers:
+
+```bash
+cd src/proxy
+docker compose up -d
+```
+
+**Use proxy when:**
+- You need independent backend scaling
+- You want fast builds (proxy is lightweight)
+- You only need subset of servers
+- You want microservices architecture
 
 ### For Dify Integration
 
-**Recommended Setup**: Use the **composite server** (port 8000) to access all MCP tools through a single URL.
+**Two Options** - both expose the same URL for Dify:
 
-Edit `src/composite/composite-config.yaml` to enable/disable servers:
+**Option A: Composite Server** (simpler)
+- Edit `src/composite/composite-config.yaml` to enable/disable servers
+- Run: `cd src/composite && docker compose up -d`
+- Connect Dify to: `http://localhost:8000/sse`
 
-```yaml
-servers:
-  - name: browser
-    enabled: true   # ✓ Enable this
-  - name: pdf
-    enabled: true   # ✓ Enable this
-  - name: xlsx
-    enabled: false  # ✗ Disable if not needed
-```
+**Option B: Proxy Server** (more flexible)
+- Edit `src/proxy/proxy-config.yaml` to enable/disable backends
+- Run: `cd src/proxy && docker compose up -d`
+- Connect Dify to: `http://localhost:8000/sse`
 
-Then configure Dify to connect to: `http://localhost:8000/sse`
+**Important**: Do NOT run composite AND proxy simultaneously - they both use port 8000.
 
 ### Port Conflict Prevention
 

@@ -1,286 +1,286 @@
-# composite mcp server
+# mcp proxy server
 
-a configurable composite mcp server that combines multiple mcp servers into a single unified server. developers can select which servers to include via yaml configuration.
+a lightweight reverse proxy that aggregates multiple mcp backend servers into a single endpoint. unlike the composite server which bundles all dependencies, the proxy routes requests to independently running backend servers.
 
 ## features
 
-- **dynamic configuration**: choose which servers to include via yaml config
-- **tool namespacing**: all tools are prefixed to avoid naming conflicts
-- **lifespan management**: handles initialization and cleanup for servers that need it
-- **single connection**: clients only need one mcp connection for multiple capabilities
-- **fail-fast validation**: ensures all configured servers load successfully
+- **lightweight**: minimal dependencies, fast builds (<1 min vs 10+ min for composite)
+- **flexible deployment**: backends can scale independently
+- **runtime reconfiguration**: enable/disable backends without rebuilding
+- **tool namespacing**: prefixes prevent naming conflicts
+- **single endpoint**: dify sees one url, proxy handles routing
 
-## available servers
+## architecture comparison
 
-- **dify**: ai agent building, workflow management, knowledge bases (requires api keys)
-- **browser**: browser automation using playwright
-- **pdf**: pdf manipulation and extraction
-- **xlsx**: spreadsheet operations
-- **docx**: word document operations
-- **pptx**: powerpoint operations
-- **vectorstore**: vector database operations (requires openai api key)
-- **langquery**: language query operations
+### proxy approach (this server)
+```
+dify → proxy:8000 → browser:8007
+                  → pdf:8001
+                  → xlsx:8004
+                  → ...
+```
+
+**pros:**
+- tiny proxy image (~200mb vs 1.5gb composite)
+- fast builds (~1 min proxy, backends build in parallel)
+- independent scaling
+- selective deployment (only run backends you need)
+
+**cons:**
+- requires all backend containers running
+- network hop adds latency (~5-10ms)
+- more complex orchestration (n+1 containers)
+
+### composite approach (alternative)
+```
+dify → composite:8000 (all servers bundled)
+```
+
+**pros:**
+- single container
+- no network overhead
+- simpler deployment
+
+**cons:**
+- large image (~1.5gb)
+- slow builds (~10+ min)
+- monolithic
 
 ## installation
 
 ```bash
-cd src/composite
+cd src/proxy
 uv sync
 ```
+
+## quick start with docker
+
+### 1. configure environment variables
+
+```bash
+cp .env.example .env
+# edit .env with your api keys
+```
+
+### 2. configure backends
+
+edit `proxy-config.yaml` to enable/disable backends:
+
+```yaml
+backends:
+  - name: browser
+    url: http://browser:8007/sse
+    enabled: true  # set to false to disable
+
+  - name: dify
+    url: http://dify:8001/sse
+    enabled: true
+```
+
+### 3. build and run
+
+```bash
+docker compose up -d
+```
+
+the proxy will be available at: **http://localhost:8000/sse**
 
 ## configuration
 
-create a `composite-config.yaml` file to define which servers to include:
+### proxy-config.yaml
 
 ```yaml
-servers:
-  - name: browser
-    module: browser
-    prefix: browser
-    enabled: true
-    has_lifespan: false
-
-  - name: dify
-    module: dify
-    prefix: dify
-    enabled: true
-    has_lifespan: true
-
-  - name: pdf
-    module: pdf
-    prefix: pdf
-    enabled: false
+backends:
+  - name: browser           # unique identifier
+    url: http://browser:8007/sse  # backend sse endpoint
+    prefix: browser        # tool name prefix
+    enabled: true          # enable/disable
+    description: browser automation
 ```
 
-### configuration file location
-
-the server searches for configuration in this order:
-1. path specified in `COMPOSITE_CONFIG_PATH` environment variable
-2. `./composite-config.yaml` in current directory
-3. `composite-config.yaml` in the package directory
-
-see `composite-config.yaml` for a complete example with all available servers.
-
-### server configuration fields
-
-- `name`: unique identifier for the server
-- `module`: python module name to import
-- `prefix`: prefix for tool names (e.g., "browser" → "browser_navigate")
-- `enabled`: whether to include this server (true/false)
-- `has_lifespan`: whether server needs initialization/cleanup (true/false)
+**configuration fields:**
+- `name`: unique backend identifier
+- `url`: backend server sse endpoint (use docker service names)
+- `prefix`: prepended to tool names (e.g., `browser_navigate`)
+- `enabled`: set to false to disable without removing config
 - `description`: human-readable description (optional)
+
+### environment variables
+
+**proxy configuration:**
+- `PROXY_CONFIG_PATH`: path to yaml config (default: ./proxy-config.yaml)
+- `HOST`: server host (default: 0.0.0.0)
+- `PORT`: server port (default: 8000)
+
+**backend-specific** (see individual server docs):
+- `DIFY_API_KEY`, `DIFY_CONSOLE_API_KEY`: required if dify enabled
+- `OPENAI_API_KEY`: required if vectorstore enabled
+- `BROWSER_TIMEOUT`, `NAVIGATION_TIMEOUT`: optional browser config
 
 ## usage
 
-### docker (recommended for dify)
-
-docker provides the simplest way to run the composite server with all dependencies pre-installed.
+### standalone (no docker)
 
 ```bash
-# 1. configure environment variables
-cp .env.docker.example .env
-# edit .env with your api keys
+# start backend servers first
+cd src/browser && TRANSPORT=sse PORT=8007 uv run python -m browser &
+cd src/pdf && TRANSPORT=sse PORT=8001 uv run python -m pdf &
+# ...
 
-# 2. configure which servers to enable
-# edit composite-config.yaml (default: dify + browser)
+# start proxy
+cd src/proxy
+PROXY_CONFIG_PATH=./proxy-config.yaml uv run python -m proxy
+```
 
-# 3. build and run
+### docker compose
+
+```bash
+# start all services
 docker compose up -d
 
-# access at http://localhost:8000/sse
+# view logs
+docker compose logs -f proxy
+
+# stop services
+docker compose down
 ```
 
-the docker image includes all mcp servers. enable/disable specific servers by editing `composite-config.yaml` without rebuilding the image.
+### connect to dify
 
-**for dify integration**: point dify to `http://localhost:8000/sse` to access all enabled mcp tools through a single endpoint.
+in dify configuration:
+- **url**: `http://localhost:8000/sse`
+- **transport**: sse
 
-see [../../DOCKER_PORTS.md](../../DOCKER_PORTS.md) for port assignments to prevent conflicts.
+## port allocation
 
-### stdio transport (default)
+see [../../DOCKER_PORTS.md](../../DOCKER_PORTS.md) for complete port assignments:
 
-```bash
-uv run python -m composite
-```
+- proxy: 8000
+- pdf: 8001
+- vectorstore: 8002
+- pptx: 8003
+- xlsx: 8004
+- docx: 8005
+- langquery: 8006
+- browser: 8007
+- dify: 8001
 
-### sse transport
+## selective deployment
 
-```bash
-TRANSPORT=sse HOST=0.0.0.0 PORT=8000 uv run python -m composite
-```
-
-## environment variables
-
-### composite configuration
-
-- `COMPOSITE_CONFIG_PATH`: path to yaml configuration file
-
-### transport configuration
-
-- `TRANSPORT`: transport type (`stdio` or `sse`, default: `stdio`)
-- `HOST`: server host (default: `0.0.0.0`)
-- `PORT`: server port (default: `8000`)
-- `ALLOW_ORIGIN`: cors allowed origins (default: `*`)
-
-### server-specific configuration
-
-configure these based on which servers you enable:
-
-**dify** (requires `has_lifespan: true`):
-- `DIFY_API_KEY`: service api key
-- `DIFY_BASE_URL`: service api url (default: `https://api.dify.ai/v1`)
-- `DIFY_CONSOLE_API_KEY`: console api key
-- `DIFY_CONSOLE_BASE_URL`: console api url (default: `https://api.dify.ai`)
-
-**browser**:
-- `BROWSER_TIMEOUT`: operation timeout in ms (default: `30000`)
-- `NAVIGATION_TIMEOUT`: navigation timeout in ms (default: `60000`)
-
-**vectorstore**:
-- `OPENAI_API_KEY`: openai api key for embeddings
-
-see individual server documentation for complete configuration options.
-
-## example configurations
-
-### browser only
+only run the backends you need:
 
 ```yaml
-servers:
+# proxy-config.yaml - enable only browser and pdf
+backends:
   - name: browser
-    module: browser
-    prefix: browser
     enabled: true
-```
 
-### document processing suite
-
-```yaml
-servers:
   - name: pdf
-    module: pdf
-    prefix: pdf
-    enabled: true
-
-  - name: docx
-    module: docx
-    prefix: doc
     enabled: true
 
   - name: xlsx
-    module: xlsx
-    prefix: sheet
-    enabled: true
+    enabled: false  # disabled
+
+  - name: docx
+    enabled: false  # disabled
 ```
 
-### ai workflow suite
+then in docker-compose.yml, comment out unused services or use profiles:
 
-```yaml
-servers:
-  - name: dify
-    module: dify
-    prefix: ai
-    enabled: true
-    has_lifespan: true
-
-  - name: browser
-    module: browser
-    prefix: web
-    enabled: true
-
-  - name: vectorstore
-    module: vectorstore
-    prefix: vec
-    enabled: true
+```bash
+# only start proxy and enabled backends
+docker compose up -d proxy browser pdf
 ```
-
-## claude desktop configuration
-
-```json
-{
-  "mcpServers": {
-    "composite": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "/path/to/mcp-servers/src/composite",
-        "run",
-        "python",
-        "-m",
-        "composite"
-      ],
-      "env": {
-        "COMPOSITE_CONFIG_PATH": "/path/to/your/composite-config.yaml"
-      }
-    }
-  }
-}
-```
-
-## architecture
-
-### how it works
-
-1. **configuration loading**: reads yaml config to determine which servers to include
-2. **dynamic server loading**: imports server modules and validates them
-3. **tool registration**: copies tools from each server with configured prefix
-4. **lifespan management**: initializes servers that need it (e.g., dify client)
-5. **unified interface**: exposes all tools through single mcp connection
-
-### benefits
-
-- **flexible composition**: choose exactly which capabilities you need
-- **clear namespacing**: prefixes prevent tool name conflicts
-- **independent development**: each server can be developed and tested separately
-- **easy maintenance**: update individual servers without changing composite structure
-- **explicit dependencies**: only install what you actually use
 
 ## troubleshooting
 
+### error: connection refused to backend
+
+check if backend service is running:
+```bash
+docker compose ps
+docker compose logs browser  # check specific backend
+```
+
+ensure backend urls in `proxy-config.yaml` use docker service names (not localhost).
+
 ### error: no configuration file found
 
-create a `composite-config.yaml` file or set `COMPOSITE_CONFIG_PATH` environment variable.
-
-example:
+set `PROXY_CONFIG_PATH` environment variable:
 ```bash
-export COMPOSITE_CONFIG_PATH=/path/to/composite-config.yaml
+export PROXY_CONFIG_PATH=/path/to/proxy-config.yaml
 ```
 
-### error: failed to load server
+### tools not appearing in dify
 
-ensure the server's dependencies are installed:
-```bash
-uv sync
-```
+1. check proxy logs: `docker compose logs proxy`
+2. verify backend is enabled in config
+3. test backend directly: `curl http://localhost:8007/sse` (adjust port)
+4. ensure backend has `TRANSPORT=sse` environment variable
 
-### error: duplicate prefixes
+### high latency
 
-each enabled server must have a unique prefix. update your config:
-```yaml
-servers:
-  - name: browser
-    prefix: web  # changed from conflicting prefix
-    enabled: true
-```
+the proxy adds a network hop (~5-10ms per request). if latency is critical:
+- use composite server instead (no proxy overhead)
+- ensure all containers on same docker network
+- consider deploying on same host
 
-### error: server requires lifespan
+## comparison with composite
 
-some servers need initialization. set `has_lifespan: true`:
-```yaml
-servers:
-  - name: dify
-    has_lifespan: true  # required for dify
-    enabled: true
-```
+| feature | proxy | composite |
+|---------|-------|-----------|
+| image size | ~200mb | ~1.5gb |
+| build time | ~1 min | ~10 min |
+| containers | n+1 | 1 |
+| latency | +5-10ms | none |
+| scaling | independent | monolithic |
+| deployment | complex | simple |
+
+**use proxy when:**
+- you need independent scaling
+- you want fast builds
+- you only need subset of servers
+- you have multiple clients with different needs
+
+**use composite when:**
+- you want simplest deployment
+- latency is critical
+- you always need all servers
+- you're primarily targeting dify
 
 ## testing
 
-run tests:
 ```bash
 uv run pytest
 ```
 
-test specific modules:
-```bash
-uv run pytest test_config.py
-uv run pytest test_loader.py
-```
+## development
+
+the proxy is intentionally minimal (~150 lines). key components:
+
+- `server.py`: main proxy logic
+- `proxy-config.yaml`: backend configuration
+- `Dockerfile`: lightweight python:3.12-slim base
+- `docker-compose.yml`: orchestrates proxy + backends
+
+## architecture notes
+
+**how tool routing works:**
+
+1. client calls `browser_navigate`
+2. proxy identifies prefix `browser` → routes to browser backend
+3. strips prefix: `navigate`
+4. forwards to `http://browser:8007/sse` with method `tools/call` and name `navigate`
+5. backend processes request
+6. proxy returns result to client
+
+**why sse only:**
+
+backends must expose sse endpoints because:
+- dify requires sse transport
+- http makes routing simpler than stdio
+- containers communicate over network
+
+**connection pooling:**
+
+proxy maintains persistent httpx client for efficient backend communication. connections are reused across requests.

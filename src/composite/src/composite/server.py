@@ -1,107 +1,221 @@
+"""MCP Composite Server - Aggregates multiple backend MCP servers into a single endpoint."""
+
+import asyncio
 import os
-from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
-from fastmcp import FastMCP
-from starlette.middleware import Middleware
-from starlette.middleware.cors import CORSMiddleware
+import httpx
+import yaml
+from mcp.server import Server
+from mcp.server.sse import SseServerTransport
+from mcp.types import (
+    CallToolResult,
+    GetPromptResult,
+    ListPromptsResult,
+    ListToolsResult,
+    TextContent,
+    Tool,
+)
+from starlette.applications import Starlette
+from starlette.routing import Mount
 
-from .config import CompositeConfig
-from .lifespan import LifespanManager
-from .loader import ServerLoader
 
-_mcp = None
-
-
-def get_mcp():
-    """lazy initialization of mcp server"""
-    global _mcp
-    if _mcp is not None:
-        return _mcp
-
-    repo_root = Path(__file__).parent.parent.parent.parent
-
+def load_config() -> dict[str, Any]:
+    """Load composite configuration from YAML file."""
     config_path = os.getenv("COMPOSITE_CONFIG_PATH")
+
     if not config_path:
-        for candidate in [
+        # Try default locations
+        candidates = [
             Path.cwd() / "composite-config.yaml",
             Path(__file__).parent.parent.parent / "composite-config.yaml",
-        ]:
+        ]
+        for candidate in candidates:
             if candidate.exists():
                 config_path = str(candidate)
                 break
 
-    if not config_path:
-        raise RuntimeError(
-            "No configuration file found.\n"
-            "Create composite-config.yaml in current directory "
-            "or set COMPOSITE_CONFIG_PATH environment variable.\n"
-            f"Example config: {Path(__file__).parent.parent.parent}/composite-config.yaml"
+    if not config_path or not Path(config_path).exists():
+        raise FileNotFoundError(
+            "No configuration file found. Set COMPOSITE_CONFIG_PATH or create composite-config.yaml"
         )
 
-    config = CompositeConfig.from_yaml(Path(config_path))
-    loader = ServerLoader(repo_root)
+    with open(config_path) as f:
+        return yaml.safe_load(f)
 
-    loaded_modules = {}
-    for server_config in config.get_enabled_servers():
+
+class MCPComposite:
+    """Composite server that aggregates multiple MCP backend servers."""
+
+    def __init__(self, config: dict[str, Any]):
+        self.config = config
+        self.backends = {
+            backend["name"]: backend
+            for backend in config["backends"]
+            if backend.get("enabled", True)
+        }
+        self.http_client = httpx.AsyncClient(timeout=30.0)
+        self.server = Server("mcp-composite")
+
+        # Register handlers
+        self.server.list_tools()(self.list_tools)
+        self.server.call_tool()(self.call_tool)
+        self.server.list_prompts()(self.list_prompts)
+        self.server.get_prompt()(self.get_prompt)
+
+    async def _fetch_from_backend(
+        self, backend_name: str, method: str, params: dict[str, Any] | None = None
+    ) -> Any:
+        """Make MCP request to a backend server."""
+        backend = self.backends[backend_name]
+        url = backend["url"]
+
+        # Construct MCP JSON-RPC request
+        request = {
+            "jsonrpc": "2.0",
+            "method": method,
+            "params": params or {},
+            "id": 1,
+        }
+
         try:
-            mcp_module = loader.load_server_module(server_config)
-            loaded_modules[server_config.name] = {
-                "mcp": mcp_module,
-                "config": server_config,
-            }
+            response = await self.http_client.post(url, json=request)
+            response.raise_for_status()
+            result = response.json()
+
+            if "error" in result:
+                raise Exception(f"Backend error: {result['error']}")
+
+            return result.get("result", {})
         except Exception as e:
-            raise RuntimeError(
-                f"Failed to load server '{server_config.name}': {e}\n"
-                f"Cannot start composite server with missing servers."
-            ) from e
+            raise Exception(f"Failed to fetch from {backend_name}: {e}")
 
-    lifespan_servers = [s for s in config.get_enabled_servers() if s.has_lifespan]
-    lifespan_manager = LifespanManager(lifespan_servers, repo_root) if lifespan_servers else None
+    async def list_tools(self) -> ListToolsResult:
+        """Aggregate tools from all backends."""
+        all_tools = []
 
-    @asynccontextmanager
-    async def composite_lifespan():
-        if lifespan_manager:
-            async with lifespan_manager.composite_lifespan() as state:
-                yield state
-        else:
-            yield {}
+        for backend_name, backend in self.backends.items():
+            try:
+                result = await self._fetch_from_backend(backend_name, "tools/list")
+                prefix = backend.get("prefix", backend_name)
 
-    server_names = [s.name for s in config.get_enabled_servers()]
-    _mcp = FastMCP(f"Composite: {' + '.join(server_names)}", lifespan=composite_lifespan)
+                for tool in result.get("tools", []):
+                    # Prefix the tool name
+                    tool["name"] = f"{prefix}_{tool['name']}"
+                    all_tools.append(Tool(**tool))
+            except Exception as e:
+                print(f"Warning: Failed to fetch tools from {backend_name}: {e}")
 
-    for server_name, module_info in loaded_modules.items():
-        source_mcp = module_info["mcp"]
-        server_config = module_info["config"]
+        return ListToolsResult(tools=all_tools)
 
-        tools_count = loader.register_tools(source_mcp, _mcp, server_config.prefix)
-        prompts_count = loader.register_prompts(source_mcp, _mcp, server_config.prefix)
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> CallToolResult:
+        """Route tool call to appropriate backend."""
+        # Find which backend owns this tool
+        for backend_name, backend in self.backends.items():
+            prefix = backend.get("prefix", backend_name)
+            if name.startswith(f"{prefix}_"):
+                # Remove prefix and call backend
+                original_name = name[len(prefix) + 1:]
 
-        print(f"loaded '{server_name}': {tools_count} tools, {prompts_count} prompts")
+                try:
+                    result = await self._fetch_from_backend(
+                        backend_name,
+                        "tools/call",
+                        {"name": original_name, "arguments": arguments}
+                    )
 
-    return _mcp
+                    # Convert result to CallToolResult format
+                    content = result.get("content", [])
+                    if isinstance(content, list):
+                        content = [TextContent(type="text", text=str(c)) for c in content]
+                    else:
+                        content = [TextContent(type="text", text=str(content))]
 
+                    return CallToolResult(content=content)
+                except Exception as e:
+                    return CallToolResult(
+                        content=[TextContent(type="text", text=f"Error: {e}")],
+                        isError=True
+                    )
 
-def serve():
-    """start mcp server"""
-    mcp_instance = get_mcp()
-
-    cors_middleware = Middleware(
-        CORSMiddleware,
-        allow_origins=[os.getenv("ALLOW_ORIGIN", "*")],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    transport = os.getenv("TRANSPORT", "stdio")
-
-    if transport == "stdio":
-        mcp_instance.run(transport="stdio")
-    else:
-        mcp_instance.run(
-            transport=transport,
-            host=os.getenv("HOST", "0.0.0.0"),
-            port=int(os.getenv("PORT", 8000)),
-            middleware=[cors_middleware],
+        return CallToolResult(
+            content=[TextContent(type="text", text=f"Tool not found: {name}")],
+            isError=True
         )
+
+    async def list_prompts(self) -> ListPromptsResult:
+        """Aggregate prompts from all backends."""
+        all_prompts = []
+
+        for backend_name, backend in self.backends.items():
+            try:
+                result = await self._fetch_from_backend(backend_name, "prompts/list")
+                prefix = backend.get("prefix", backend_name)
+
+                for prompt in result.get("prompts", []):
+                    # Prefix the prompt name
+                    prompt["name"] = f"{prefix}_{prompt['name']}"
+                    all_prompts.append(prompt)
+            except Exception as e:
+                print(f"Warning: Failed to fetch prompts from {backend_name}: {e}")
+
+        return ListPromptsResult(prompts=all_prompts)
+
+    async def get_prompt(self, name: str, arguments: dict[str, Any] | None = None) -> GetPromptResult:
+        """Route prompt request to appropriate backend."""
+        for backend_name, backend in self.backends.items():
+            prefix = backend.get("prefix", backend_name)
+            if name.startswith(f"{prefix}_"):
+                original_name = name[len(prefix) + 1:]
+
+                try:
+                    result = await self._fetch_from_backend(
+                        backend_name,
+                        "prompts/get",
+                        {"name": original_name, "arguments": arguments or {}}
+                    )
+                    return GetPromptResult(**result)
+                except Exception as e:
+                    raise Exception(f"Failed to get prompt: {e}")
+
+        raise Exception(f"Prompt not found: {name}")
+
+    async def cleanup(self):
+        """Cleanup resources."""
+        await self.http_client.aclose()
+
+
+async def main():
+    """Run the MCP composite server."""
+    config = load_config()
+    composite = MCPComposite(config)
+
+    # Get transport configuration
+    host = os.getenv("HOST", "0.0.0.0")
+    port = int(os.getenv("PORT", "8000"))
+
+    print(f"Starting MCP Composite Server")
+    print(f"Backends: {', '.join(composite.backends.keys())}")
+    print(f"Listening on {host}:{port}/sse")
+
+    try:
+        # Create SSE transport
+        sse = SseServerTransport("/messages")
+
+        # Create Starlette app
+        app = Starlette(
+            routes=[Mount("/", app=sse.get_asgi_app(composite.server))],
+        )
+
+        # Run with uvicorn
+        import uvicorn
+        await uvicorn.Server(
+            uvicorn.Config(app, host=host, port=port, log_level="info")
+        ).serve()
+    finally:
+        await composite.cleanup()
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

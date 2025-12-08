@@ -1,6 +1,7 @@
-"""Entry point for the composite MCP server."""
+"""Entry point for the MCP composite server."""
 
-from .server import serve
+import asyncio
+from composite.server import main
 
 if __name__ == "__main__":
-    serve()
+    asyncio.run(main())

@@ -1,65 +1,65 @@
-# composite mcp server configuration
-# enable the servers you want to include in your composite
+# MCP Proxy Configuration
+# This proxy aggregates multiple MCP backend servers into a single endpoint
 
-servers:
-  # ai agent builder & workflows
-  # requires: DIFY_API_KEY, DIFY_CONSOLE_API_KEY
-  - name: dify
-    module: dify
-    prefix: dify
-    enabled: true
-    has_lifespan: true
-    description: ai agent building, workflow management, knowledge bases
-
-  # browser automation
+backends:
+  # Browser automation server
   - name: browser
-    module: browser
+    url: http://browser:8007/sse
     prefix: browser
     enabled: true
-    has_lifespan: false
-    description: browser automation using playwright
+    description: Browser automation using Playwright
 
-  # document processing (disabled by default)
+  # Dify AI platform server
+  - name: dify
+    url: http://dify:8001/sse
+    prefix: dify
+    enabled: true
+    description: AI agent building and workflow management
+
+  # PDF operations server
   - name: pdf
-    module: pdf
+    url: http://pdf:8001/sse
     prefix: pdf
-    enabled: false
-    has_lifespan: false
-    description: pdf manipulation and extraction
+    enabled: true
+    description: PDF manipulation and extraction
 
+  # Spreadsheet operations server
   - name: xlsx
-    module: xlsx
+    url: http://xlsx:8004/sse
     prefix: xlsx
-    enabled: false
-    has_lifespan: false
-    description: spreadsheet operations
+    enabled: true
+    description: Excel spreadsheet operations
 
+  # Document operations server
   - name: docx
-    module: docx
+    url: http://docx:8005/sse
     prefix: docx
-    enabled: false
-    has_lifespan: false
-    description: word document operations
+    enabled: true
+    description: Word document operations
 
+  # Presentation operations server
   - name: pptx
-    module: pptx_server
+    url: http://pptx:8003/sse
     prefix: pptx
-    enabled: false
-    has_lifespan: false
-    description: powerpoint operations
+    enabled: true
+    description: PowerPoint operations
 
-  # vector store
-  # requires: openai api key
+  # Vector database server
   - name: vectorstore
-    module: vectorstore
-    prefix: vector
-    enabled: false
-    has_lifespan: false
-    description: vector database operations
+    url: http://vectorstore:8002/sse
+    prefix: vec
+    enabled: true
+    description: Vector database operations
 
+  # Language query server
   - name: langquery
-    module: langquery
+    url: http://langquery:8006/sse
     prefix: lang
     enabled: false
-    has_lifespan: false
-    description: language query operations
+    description: Language query operations
+
+# Configuration notes:
+# - Set enabled: false to disable a backend without removing it
+# - prefix is prepended to tool names to avoid conflicts
+# - url should point to the backend's SSE endpoint
+# - Backends must be accessible from the proxy container (use Docker service names)

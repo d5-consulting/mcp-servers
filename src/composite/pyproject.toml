@@ -1,25 +1,17 @@
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [project]
 name = "composite"
 version = "0.1.0"
-description = "A configurable composite MCP server for combining multiple MCP servers"
+description = "MCP composite server for aggregating multiple backend MCP servers"
 readme = "README.md"
 requires-python = ">=3.12"
-# Server-specific dependencies only (global deps inherited from root)
 dependencies = [
-    # Individual server dependencies
+    "mcp>=1.1.3",
     "httpx>=0.28.1",
-    "pyyaml>=6.0.0",
-    "playwright>=1.49.0",
+    "pyyaml>=6.0.2",
+    "uvicorn>=0.34.0",
+    "starlette>=0.41.3",
 ]
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/composite"]
-
-[tool.pytest.ini_options]
-pythonpath = "src"
-testpaths = ["."]
-asyncio_default_fixture_loop_scope = "function"
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
