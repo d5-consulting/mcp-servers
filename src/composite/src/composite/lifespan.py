@@ -66,11 +66,14 @@ class LifespanManager:
 
             except Exception as e:
                 # cleanup any already-initialized contexts
-                for _, ctx in reversed(cleanup_contexts):
+                for cleanup_name, ctx in reversed(cleanup_contexts):
                     try:
                         await ctx.__aexit__(None, None, None)
-                    except Exception:
-                        pass
+                    except Exception as cleanup_error:
+                        print(
+                            f"warning: failed to cleanup '{cleanup_name}' "
+                            f"after init error: {cleanup_error}"
+                        )
                 raise RuntimeError(
                     f"failed to initialize lifespan for server '{server_config.name}': {e}"
                 ) from e

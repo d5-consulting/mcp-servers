@@ -148,15 +148,21 @@ class ServerLoader:
     def register_tools(
         self, source_mcp: Any, target_mcp: FastMCP, prefix: str
     ) -> int:
-        """Copy tools from source to target MCP with prefix.
+        """copy tools from source to target mcp with prefix
+
+        note: accesses private _tool_manager._tools attribute as fastmcp
+        does not provide a public api for tool registration copying
 
         Args:
-            source_mcp: Source FastMCP instance to copy tools from
-            target_mcp: Target FastMCP instance to register tools to
-            prefix: Prefix to add to tool names (e.g., 'dify' -> 'dify_tool_name')
+            source_mcp: source fastmcp instance to copy tools from
+            target_mcp: target fastmcp instance to register tools to
+            prefix: prefix to add to tool names (e.g., 'dify' -> 'dify_tool_name')
 
         Returns:
-            Number of tools registered
+            number of tools registered
+
+        Raises:
+            ValueError: if tool name collision is detected
         """
         if not hasattr(source_mcp, "_tool_manager"):
             return 0
@@ -169,10 +175,17 @@ class ServerLoader:
         count = 0
 
         for tool_key, tool_obj in tools.items():
-            # Create prefixed tool name
+            # create prefixed tool name
             prefixed_name = f"{prefix}_{tool_obj.name}"
 
-            # Register tool in target MCP
+            # check for collision
+            if prefixed_name in target_mcp._tool_manager._tools:
+                raise ValueError(
+                    f"tool name collision: '{prefixed_name}' already exists\n"
+                    f"cannot register tool from '{prefix}' server"
+                )
+
+            # register tool in target mcp
             target_mcp._tool_manager._tools[prefixed_name] = tool_obj
 
             count += 1
@@ -182,15 +195,21 @@ class ServerLoader:
     def register_prompts(
         self, source_mcp: Any, target_mcp: FastMCP, prefix: str
     ) -> int:
-        """Copy prompts from source to target MCP with prefix.
+        """copy prompts from source to target mcp with prefix
+
+        note: accesses private _prompt_manager._prompts attribute as fastmcp
+        does not provide a public api for prompt registration copying
 
         Args:
-            source_mcp: Source FastMCP instance to copy prompts from
-            target_mcp: Target FastMCP instance to register prompts to
-            prefix: Prefix to add to prompt names
+            source_mcp: source fastmcp instance to copy prompts from
+            target_mcp: target fastmcp instance to register prompts to
+            prefix: prefix to add to prompt names
 
         Returns:
-            Number of prompts registered
+            number of prompts registered
+
+        Raises:
+            ValueError: if prompt name collision is detected
         """
         if not hasattr(source_mcp, "_prompt_manager"):
             return 0
@@ -203,10 +222,17 @@ class ServerLoader:
         count = 0
 
         for prompt_key, prompt_obj in prompts.items():
-            # Create prefixed prompt name
+            # create prefixed prompt name
             prefixed_name = f"{prefix}_{prompt_obj.name}"
 
-            # Register prompt in target MCP
+            # check for collision
+            if prefixed_name in target_mcp._prompt_manager._prompts:
+                raise ValueError(
+                    f"prompt name collision: '{prefixed_name}' already exists\n"
+                    f"cannot register prompt from '{prefix}' server"
+                )
+
+            # register prompt in target mcp
             target_mcp._prompt_manager._prompts[prefixed_name] = prompt_obj
 
             count += 1
