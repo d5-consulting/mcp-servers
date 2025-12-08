@@ -215,12 +215,11 @@ async def test_concurrent_query_logging():
         # At least some of the concurrent queries should appear in history
         concurrent_count = sum(1 for i in range(20) if f"concurrent_test_{i}" in history_text)
 
-        # Should have logged most queries. Threshold is 12/20 (60%) to account for:
-        # - CI/test environment variability in concurrent execution
-        # - Potential cleanup occurring during test (every 10 queries)
-        # - Database connection overhead in high-concurrency scenarios
-        # Note: Consistently getting <15/20 may indicate a race condition issue
-        assert concurrent_count >= 12, f"Only {concurrent_count}/20 concurrent queries were logged"
+        # Should have logged almost all queries. Threshold is 18/20 (90%) to properly detect race conditions.
+        # With proper thread safety and locking, we should consistently log 18-20 out of 20 queries.
+        # If this test fails consistently, it indicates a real race condition issue that needs fixing.
+        # Note: Cleanup may remove some queries if triggered during test (every 10 queries)
+        assert concurrent_count >= 18, f"Only {concurrent_count}/20 concurrent queries were logged - possible race condition"
 
 
 @pytest.mark.asyncio

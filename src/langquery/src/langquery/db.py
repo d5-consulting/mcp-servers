@@ -117,7 +117,14 @@ class HistoryDB:
         """
         # Truncate large results to prevent memory issues
         if result and len(result) > MAX_RESULT_SIZE:
-            result = result[:MAX_RESULT_SIZE] + "\n... (truncated)"
+            # Try to find the last complete line/row before MAX_RESULT_SIZE
+            # to avoid breaking markdown table formatting mid-row
+            truncated = result[:MAX_RESULT_SIZE]
+            last_newline = truncated.rfind('\n')
+            if last_newline > 0:
+                # Truncate at last complete line
+                truncated = result[:last_newline]
+            result = truncated + "\n\n... (result truncated due to size limit)"
 
         # Insert query in its own transaction
         with duckdb.connect(self.db_path) as conn:
@@ -247,8 +254,18 @@ class HistoryDB:
         """
         import re
 
-        # Remove file paths (Unix and Windows style)
-        error = re.sub(r'(/[^\s]+)|([A-Z]:\\[^\s]+)', '[path]', error)
+        # Remove file paths - handle multiple formats:
+        # - Unix absolute paths: /path/to/file
+        # - Windows absolute paths: C:\path\to\file
+        # - UNC paths: \\server\share\file
+        # - file:// URLs: file:///path/to/file
+        # - Relative paths with spaces: ./my dir/file
+        error = re.sub(r'file:///[^\s]+', '[path]', error)  # file:// URLs
+        error = re.sub(r'\\\\[^\s]+', '[path]', error)  # UNC paths
+        error = re.sub(r'/[^\s]+', '[path]', error)  # Unix paths
+        error = re.sub(r'[A-Z]:\\[^\s]+', '[path]', error)  # Windows paths
+        error = re.sub(r'\./[^\s]+', '[path]', error)  # Relative paths
+        error = re.sub(r'\.\./[^\s]+', '[path]', error)  # Parent directory paths
 
         # Remove line numbers and column references that might expose internals
         error = re.sub(r'line \d+', 'line [redacted]', error, flags=re.IGNORECASE)
@@ -314,6 +331,12 @@ class HistoryDB:
             # RETURNING returns one row per deleted row, so we count the results
             result = conn.execute("DELETE FROM query_history RETURNING id").fetchall()
             count = len(result)
+
+            # Reset the sequence to start from 1 again
+            # This prevents ID gaps and potential sequence exhaustion over time
+            # DuckDB doesn't support ALTER SEQUENCE RESTART, so we drop and recreate
+            conn.execute("DROP SEQUENCE IF EXISTS query_history_id_seq")
+            conn.execute("CREATE SEQUENCE query_history_id_seq START 1")
 
             # Thread-safe counter reset
             with self._counter_lock:
