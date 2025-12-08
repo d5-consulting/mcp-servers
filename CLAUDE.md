@@ -4,6 +4,25 @@ This document contains guidelines for AI assistants working on this codebase.
 
 ## Workflow
 
+### GitHub Flow
+
+This repository follows [GitHub Flow](https://guides.github.com/introduction/flow/), a lightweight, branch-based workflow:
+
+1. **Main branch is always deployable**: The `main` branch should always be in a working state
+2. **Create descriptive branches**: Create a new branch off `main` for each feature or fix
+   - Use descriptive names: `feat/add-feature`, `fix/bug-description`, `docs/update-readme`
+3. **Commit often**: Make small, focused commits with clear messages
+4. **Open a Pull Request**: Open a PR early to start discussion and get feedback
+5. **Review and discuss**: Collaborate on code review and address feedback
+6. **Merge to main**: Once approved and tests pass, merge the PR to `main`
+
+**Branch Naming Convention:**
+- `feat/` - New features
+- `fix/` - Bug fixes
+- `docs/` - Documentation updates
+- `refactor/` - Code refactoring
+- `test/` - Test updates
+
 ### Use Git Worktrees for Changes
 
 Always create a new worktree for each branch to keep work isolated:
@@ -19,12 +38,17 @@ This creates a new working directory outside the main repository, which:
 
 ### SSH Authentication
 
-When pushing changes, use the appropriate SSH key:
+If you need to use a specific SSH key for authentication:
 
 ```bash
-eval $(ssh-agent) && ssh-add ~/.ssh/id_ed25519_personal
-GIT_SSH_COMMAND="ssh -i ~/.ssh/id_ed25519_personal" git push
+# Add your SSH key to the agent
+eval $(ssh-agent) && ssh-add ~/.ssh/your_key_name
+
+# Push using the specific key
+GIT_SSH_COMMAND="ssh -i ~/.ssh/your_key_name" git push
 ```
+
+Replace `your_key_name` with your actual SSH key filename (e.g., `id_ed25519`, `id_rsa`).
 
 ## Code Principles
 
