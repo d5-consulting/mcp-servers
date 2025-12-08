@@ -3,8 +3,13 @@ FROM python:3.12
 RUN apt update && apt install -y make
 RUN pip install --upgrade pip && pip install uv
 
-COPY . /pptx
-WORKDIR /pptx
-RUN make install
+# Copy monorepo configuration from root
+COPY pyproject.toml uv.lock /app/
+COPY src/pptx /app/src/pptx
 
-CMD ["make", "serve"]
+WORKDIR /app
+
+# Install using workspace dependencies
+RUN uv sync --package pptx
+
+CMD ["uv", "run", "python", "-m", "pptx_server"]

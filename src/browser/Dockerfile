@@ -1,6 +1,14 @@
 FROM mcr.microsoft.com/playwright/python:v1.49.0-noble
 
+RUN pip install --upgrade pip && pip install uv
+
+# Copy monorepo configuration from root
+COPY pyproject.toml uv.lock /app/
+COPY src/browser /app/src/browser
+
 WORKDIR /app
-COPY . .
-RUN pip install -e .
-CMD ["python", "-m", "browser"]
+
+# Install using workspace dependencies
+RUN uv sync --package browser
+
+CMD ["uv", "run", "python", "-m", "browser"]

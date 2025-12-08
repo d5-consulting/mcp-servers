@@ -1,5 +1,7 @@
 services:
   mcp:
-    build: .
+    build:
+      context: ../..
+      dockerfile: src/browser/Dockerfile
     volumes:
       - ./workspace:/app/workspace

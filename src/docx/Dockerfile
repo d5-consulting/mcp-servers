@@ -3,8 +3,13 @@ FROM python:3.12
 RUN apt update && apt install -y make pandoc libreoffice
 RUN pip install --upgrade pip && pip install uv
 
-COPY . /docx
-WORKDIR /docx
-RUN make install
+# Copy monorepo configuration from root
+COPY pyproject.toml uv.lock /app/
+COPY src/docx /app/src/docx
 
-CMD ["make", "serve"]
+WORKDIR /app
+
+# Install using workspace dependencies
+RUN uv sync --package docx
+
+CMD ["uv", "run", "python", "-m", "docx"]

@@ -13,8 +13,7 @@ help:
 	@echo "  make pre-commit  - run lint and clean before committing"
 
 install:
-	uv sync
-	uv pip install -e .
+	cd ../.. && uv sync --package pptx
 
 build:
 	docker compose build
