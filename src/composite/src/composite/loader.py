@@ -186,9 +186,10 @@ class ServerLoader:
                     f"cannot register tool from '{prefix}' server"
                 )
 
-            # create a copy of the tool object and update its name
+            # create a deep copy of the tool object and update its name
             # this ensures the registry key matches the tool's name attribute
-            tool_copy = copy.copy(tool_obj)
+            # deepcopy is used to avoid sharing nested mutable state
+            tool_copy = copy.deepcopy(tool_obj)
             tool_copy.name = prefixed_name
 
             # register tool copy in target mcp
@@ -238,9 +239,10 @@ class ServerLoader:
                     f"cannot register prompt from '{prefix}' server"
                 )
 
-            # create a copy of the prompt object and update its name
+            # create a deep copy of the prompt object and update its name
             # this ensures the registry key matches the prompt's name attribute
-            prompt_copy = copy.copy(prompt_obj)
+            # deepcopy is used to avoid sharing nested mutable state
+            prompt_copy = copy.deepcopy(prompt_obj)
             prompt_copy.name = prefixed_name
 
             # register prompt copy in target mcp
