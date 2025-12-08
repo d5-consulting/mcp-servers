@@ -82,8 +82,8 @@ This repository uses a **Google-style monorepo** with `uv` workspaces for unifie
 
 **Common Commands:**
 - Install all dependencies: `uv sync --dev` (run from root)
-- Add global dependency: Edit root `pyproject.toml` and run `uv lock`
-- Add server-specific dependency: Edit `src/<server>/pyproject.toml` and run `uv lock`
+- Add global dependency: Edit root `pyproject.toml`, then run `uv lock && uv sync --dev`
+- Add server-specific dependency: Edit `src/<server>/pyproject.toml`, then run `uv lock && uv sync --dev`
 - Run server: `cd src/<server> && uv run fastmcp run server.py`
 - Run tests: `cd src/<server> && uv run pytest -v`
 
