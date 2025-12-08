@@ -1,4 +1,5 @@
 import subprocess
+import sys
 import time
 
 import duckdb
@@ -35,23 +36,23 @@ def query(sql: str) -> str:
     start_time = time.time()
 
     try:
-        db = duckdb.connect(database=":memory:")
-        result_df = db.execute(sql).fetchdf()
-        execution_time_ms = (time.time() - start_time) * 1000
+        with duckdb.connect(database=":memory:") as db:
+            result_df = db.execute(sql).fetchdf()
+            execution_time_ms = (time.time() - start_time) * 1000
 
-        result_text = result_df.to_markdown(index=False)
-        row_count = len(result_df)
+            result_text = result_df.to_markdown(index=False)
+            row_count = len(result_df)
 
-        # Log successful query
-        history_db.log_query(
-            query=sql,
-            result=result_text,
-            execution_time_ms=execution_time_ms,
-            row_count=row_count,
-            success=True,
-        )
+            # Log successful query
+            history_db.log_query(
+                query=sql,
+                result=result_text,
+                execution_time_ms=execution_time_ms,
+                row_count=row_count,
+                success=True,
+            )
 
-        return result_text
+            return result_text
     except Exception as e:
         execution_time_ms = (time.time() - start_time) * 1000
         error_msg = str(e)
@@ -64,9 +65,9 @@ def query(sql: str) -> str:
                 error=error_msg,
                 success=False,
             )
-        except Exception:
-            # Logging failed, but we still want to raise the original query error
-            pass
+        except Exception as log_err:
+            # Logging failed - warn operators but don't mask the original query error
+            print(f"Warning: Failed to log query to history: {log_err}", file=sys.stderr)
 
         raise
 

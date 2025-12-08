@@ -116,3 +116,31 @@ clear_query_history()
 - Results over 1MB are automatically truncated to prevent memory issues
 - History is automatically cleaned to keep last 100 queries
 - Manual cleanup available via `clear_query_history()` tool
+
+### Configuration
+
+The query history feature can be configured via environment variables:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LANGQUERY_MAX_RESULT_SIZE` | `1048576` (1MB) | Maximum size for cached query results in bytes |
+| `LANGQUERY_MAX_HISTORY_SIZE` | `100` | Maximum number of queries to keep in history |
+| `LANGQUERY_CLEANUP_FREQUENCY` | `10` | Run cleanup every N queries |
+
+Example:
+```bash
+export LANGQUERY_MAX_HISTORY_SIZE=200
+export LANGQUERY_CLEANUP_FREQUENCY=20
+uv run python -m langquery
+```
+
+### Multi-Process Limitations
+
+**WARNING:** The query history feature uses a file-based DuckDB database which is designed for single-process access. Running multiple langquery server instances concurrently that share the same workspace directory may lead to database corruption or locking issues.
+
+**Recommendations:**
+- **Single Process**: Use one langquery server instance per workspace directory
+- **Separate Workspaces**: If running multiple instances, use different workspace directories for each
+- **Process Coordination**: If multi-process access is required, consider implementing external coordination (e.g., file locks) or use a client-server database
+
+The implementation is thread-safe within a single process but does not support concurrent access from multiple processes.

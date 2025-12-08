@@ -1,15 +1,16 @@
 """Database management for query history."""
 
+import os
 from pathlib import Path
 from threading import Lock
 from typing import Optional
 
 import duckdb
 
-# Configuration constants
-MAX_RESULT_SIZE = 1024 * 1024  # Maximum size for cached results (1MB)
-MAX_HISTORY_SIZE = 100  # Maximum number of queries to keep in history
-CLEANUP_FREQUENCY = 10  # Run cleanup every N queries
+# Configuration constants (configurable via environment variables)
+MAX_RESULT_SIZE = int(os.getenv("LANGQUERY_MAX_RESULT_SIZE", 1024 * 1024))  # Default: 1MB
+MAX_HISTORY_SIZE = int(os.getenv("LANGQUERY_MAX_HISTORY_SIZE", 100))  # Default: 100 queries
+CLEANUP_FREQUENCY = int(os.getenv("LANGQUERY_CLEANUP_FREQUENCY", 10))  # Default: every 10 queries
 
 
 class HistoryDB:
@@ -57,6 +58,11 @@ class HistoryDB:
                     error TEXT,
                     success BOOLEAN
                 )
+            """)
+            # Add index on timestamp for better query performance
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_query_history_timestamp
+                ON query_history(timestamp)
             """)
 
     def log_query(
@@ -195,7 +201,7 @@ class HistoryDB:
         """Search query history by query text.
 
         Args:
-            search_term: Term to search for in queries
+            search_term: Term to search for in queries (% and _ are treated as literals)
             limit: Maximum number of results (1-1000)
 
         Returns:
@@ -204,6 +210,9 @@ class HistoryDB:
         # Validate limit parameter
         if limit < 1 or limit > 1000:
             return "Error: limit must be between 1 and 1000"
+
+        # Escape SQL wildcards so they're treated as literal characters
+        escaped_term = search_term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
         with duckdb.connect(self.db_path) as conn:
             result = conn.execute(
@@ -216,11 +225,11 @@ class HistoryDB:
                     row_count,
                     success
                 FROM query_history
-                WHERE query ILIKE ?
+                WHERE query ILIKE ? ESCAPE '\\'
                 ORDER BY timestamp DESC
                 LIMIT ?
             """,
-                [f"%{search_term}%", limit],
+                [f"%{escaped_term}%", limit],
             ).fetchdf()
 
             if result.empty:
