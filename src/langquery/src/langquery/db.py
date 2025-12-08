@@ -34,9 +34,9 @@ def _get_env_int(name: str, default: int, min_value: int = 1) -> int:
 
 
 # Configuration constants (configurable via environment variables)
-MAX_RESULT_SIZE = _get_env_int("LANGQUERY_MAX_RESULT_SIZE", 1024 * 1024)  # Default: 1MB
-MAX_HISTORY_SIZE = _get_env_int("LANGQUERY_MAX_HISTORY_SIZE", 100)  # Default: 100 queries
-CLEANUP_FREQUENCY = _get_env_int("LANGQUERY_CLEANUP_FREQUENCY", 10)  # Default: every 10 queries
+MAX_RESULT_SIZE = _get_env_int("LANGQUERY_MAX_RESULT_SIZE", 1024 * 1024, min_value=1024)  # Default: 1MB, min 1KB
+MAX_HISTORY_SIZE = _get_env_int("LANGQUERY_MAX_HISTORY_SIZE", 100, min_value=1)  # Default: 100 queries, min 1
+CLEANUP_FREQUENCY = _get_env_int("LANGQUERY_CLEANUP_FREQUENCY", 10, min_value=1)  # Default: every 10 queries, min 1 (prevents division by zero)
 
 
 class HistoryDB:
@@ -56,7 +56,8 @@ class HistoryDB:
             workspace_dir = os.getenv("LANGQUERY_WORKSPACE", "workspace")
             workspace = Path(workspace_dir)
             try:
-                workspace.mkdir(parents=True, exist_ok=True)
+                # Create workspace directory with secure permissions (owner-only access)
+                workspace.mkdir(parents=True, exist_ok=True, mode=0o700)
             except OSError as e:
                 raise OSError(
                     f"Failed to create workspace directory at {workspace.absolute()}: {e}"
@@ -67,6 +68,15 @@ class HistoryDB:
         self._counter_lock = Lock()  # Lock for thread-safe counter increment
         self._cleanup_in_progress = False  # Flag to prevent concurrent cleanup
         self._init_schema()
+
+        # Set secure permissions on database file (owner-only read/write)
+        # This is critical since the DB contains query results with potentially sensitive data
+        try:
+            os.chmod(self.db_path, 0o600)
+        except OSError:
+            # If chmod fails (e.g., on some filesystems), log but don't fail
+            # The directory-level permissions provide some protection
+            pass
 
         # Initialize counter from database to prevent drift after restart/clear
         with duckdb.connect(self.db_path) as conn:
@@ -91,9 +101,12 @@ class HistoryDB:
                     success BOOLEAN
                 )
             """)
-            # Create index on timestamp for better query performance
+            # Create indexes for better query performance
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_query_history_timestamp ON query_history(timestamp)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_query_history_query ON query_history(query)
             """)
 
     def log_query(
@@ -149,25 +162,22 @@ class HistoryDB:
         if should_cleanup:
             try:
                 with duckdb.connect(self.db_path) as conn:
-                    # Double-check: verify cleanup is still needed
-                    # This prevents race where multiple threads think they should cleanup
-                    count = conn.execute("SELECT COUNT(*) FROM query_history").fetchone()[0]
-                    if count > MAX_HISTORY_SIZE:
-                        # Keep only the last MAX_HISTORY_SIZE queries
-                        # Use ID-based deletion which leverages primary key index
-                        conn.execute(
-                            """
-                            DELETE FROM query_history
-                            WHERE id < (
-                                SELECT MIN(id) FROM (
-                                    SELECT id FROM query_history
-                                    ORDER BY id DESC
-                                    LIMIT ?
-                                )
+                    # Keep only the last MAX_HISTORY_SIZE queries
+                    # Use ID-based deletion which leverages primary key index
+                    # This operation is idempotent - safe if multiple threads execute it
+                    conn.execute(
+                        """
+                        DELETE FROM query_history
+                        WHERE id < (
+                            SELECT MIN(id) FROM (
+                                SELECT id FROM query_history
+                                ORDER BY id DESC
+                                LIMIT ?
                             )
-                        """,
-                            [MAX_HISTORY_SIZE],
                         )
+                    """,
+                        [MAX_HISTORY_SIZE],
+                    )
             finally:
                 # Always reset cleanup flag
                 with self._counter_lock:
@@ -327,10 +337,12 @@ class HistoryDB:
             Success message with count of deleted queries
         """
         with duckdb.connect(self.db_path) as conn:
-            # Use DELETE...RETURNING to get count in single query
-            # RETURNING returns one row per deleted row, so we count the results
-            result = conn.execute("DELETE FROM query_history RETURNING id").fetchall()
-            count = len(result)
+            # Get count before deleting for performance
+            # More efficient than RETURNING which creates a result set for each deleted row
+            count = conn.execute("SELECT COUNT(*) FROM query_history").fetchone()[0]
+
+            # Delete all history
+            conn.execute("DELETE FROM query_history")
 
             # Reset the sequence to start from 1 again
             # This prevents ID gaps and potential sequence exhaustion over time
@@ -338,11 +350,11 @@ class HistoryDB:
             conn.execute("DROP SEQUENCE IF EXISTS query_history_id_seq")
             conn.execute("CREATE SEQUENCE query_history_id_seq START 1")
 
-            # Thread-safe counter reset
-            with self._counter_lock:
-                self._query_count = 0
+        # Thread-safe counter reset (outside DB transaction)
+        with self._counter_lock:
+            self._query_count = 0
 
-            return f"Cleared {count} queries from history."
+        return f"Cleared {count} queries from history."
 
 
 # Global instance with thread-safe initialization
