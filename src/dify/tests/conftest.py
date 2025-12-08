@@ -1,10 +1,11 @@
 """Test configuration and fixtures."""
 
 import pytest
+import pytest_asyncio
 from fastmcp import Context
 
 
-@pytest.fixture(scope="function")
+@pytest_asyncio.fixture(scope="function")
 async def mock_context():
     """Create a mock FastMCP context for testing."""
 
