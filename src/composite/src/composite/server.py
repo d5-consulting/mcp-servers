@@ -25,9 +25,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.routing import Mount
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -60,11 +58,7 @@ class MCPComposite:
 
     def __init__(self, config: dict[str, Any]):
         self.config = config
-        self.backends = {
-            backend["name"]: backend
-            for backend in config["backends"]
-            if backend.get("enabled", True)
-        }
+        self.backends = {backend["name"]: backend for backend in config["backends"] if backend.get("enabled", True)}
         self.http_client = httpx.AsyncClient(timeout=30.0)
         self.server = Server("mcp-composite")
 
@@ -74,9 +68,7 @@ class MCPComposite:
         self.server.list_prompts()(self.list_prompts)
         self.server.get_prompt()(self.get_prompt)
 
-    async def _fetch_from_backend(
-        self, backend_name: str, method: str, params: dict[str, Any] | None = None
-    ) -> Any:
+    async def _fetch_from_backend(self, backend_name: str, method: str, params: dict[str, Any] | None = None) -> Any:
         """Make MCP request to a backend server."""
         backend = self.backends[backend_name]
         url = backend["url"]
@@ -119,9 +111,7 @@ class MCPComposite:
 
         return ListToolsResult(tools=all_tools)
 
-    async def call_tool(
-        self, name: str, arguments: dict[str, Any]
-    ) -> CallToolResult:
+    async def call_tool(self, name: str, arguments: dict[str, Any]) -> CallToolResult:
         """Route tool call to appropriate backend."""
         # Find which backend owns this tool
         for backend_name, backend in self.backends.items():
@@ -140,9 +130,7 @@ class MCPComposite:
                     # Convert result to CallToolResult format
                     content = result.get("content", [])
                     if isinstance(content, list):
-                        content = [
-                            TextContent(type="text", text=str(c)) for c in content
-                        ]
+                        content = [TextContent(type="text", text=str(c)) for c in content]
                     else:
                         content = [TextContent(type="text", text=str(content))]
 
@@ -176,9 +164,7 @@ class MCPComposite:
 
         return ListPromptsResult(prompts=all_prompts)
 
-    async def get_prompt(
-        self, name: str, arguments: dict[str, Any] | None = None
-    ) -> GetPromptResult:
+    async def get_prompt(self, name: str, arguments: dict[str, Any] | None = None) -> GetPromptResult:
         """Route prompt request to appropriate backend."""
         for backend_name, backend in self.backends.items():
             prefix = backend.get("prefix", backend_name)
@@ -247,9 +233,7 @@ async def _run_server():
         )
 
         # Run with uvicorn
-        await uvicorn.Server(
-            uvicorn.Config(app, host=host, port=port, log_level="info")
-        ).serve()
+        await uvicorn.Server(uvicorn.Config(app, host=host, port=port, log_level="info")).serve()
     finally:
         await composite.cleanup()
 
