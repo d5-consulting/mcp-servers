@@ -24,8 +24,10 @@ def reset_history_db():
         with db_module._lock:
             db_module._history_db = db_module.HistoryDB(db_path=str(Path(tmpdir) / "test.db"))
 
-        yield
-
-        # Restore original database after test
-        with db_module._lock:
-            db_module._history_db = original_db
+        try:
+            yield
+        finally:
+            # Restore original database before tempdir is deleted
+            # This prevents _history_db from pointing to a deleted directory
+            with db_module._lock:
+                db_module._history_db = original_db

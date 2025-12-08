@@ -85,11 +85,6 @@ class HistoryDB:
                     success BOOLEAN
                 )
             """)
-            # Add index on timestamp for better query performance
-            conn.execute("""
-                CREATE INDEX IF NOT EXISTS idx_query_history_timestamp
-                ON query_history(timestamp)
-            """)
 
     def log_query(
         self,
