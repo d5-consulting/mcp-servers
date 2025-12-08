@@ -1,6 +1,7 @@
 """Database management for query history."""
 
 import os
+import re
 import sys
 from pathlib import Path
 from threading import Lock
@@ -233,6 +234,10 @@ class HistoryDB:
         Returns:
             The cached result or error message
         """
+        # Validate query_id parameter
+        if query_id < 1:
+            return f"Error: query_id must be a positive integer (got {query_id})"
+
         with duckdb.connect(self.db_path) as conn:
             result = conn.execute(
                 """
@@ -268,8 +273,6 @@ class HistoryDB:
         Returns:
             Sanitized error message
         """
-        import re
-
         # Remove file paths - handle multiple formats:
         # - Unix absolute paths: /path/to/file (must start with / followed by letters/numbers)
         # - Windows absolute paths: C:\path\to\file

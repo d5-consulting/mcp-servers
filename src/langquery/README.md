@@ -117,16 +117,34 @@ clear_query_history()
 - History is automatically cleaned to keep last 100 queries
 - Manual cleanup available via `clear_query_history()` tool
 
+### Migration and Compatibility
+
+**Existing Installations:**
+- Query history is a new feature that does not affect existing langquery functionality
+- The history database is created automatically on first use in the `workspace/` directory
+- No changes required to existing queries - all queries are automatically logged
+- Existing queries will start appearing in history immediately after upgrade
+- No migration or data conversion needed
+
+**Performance Impact:**
+- Minimal overhead: ~1-2ms per query for logging
+- Cleanup runs every 10 queries (configurable) with negligible impact
+- Cached results improve performance for repeated queries
+- Database file grows up to ~10-50MB depending on query volume (auto-cleaned to 100 queries by default)
+
+**Disabling History:**
+If you need to disable history logging for specific use cases, you can clear it regularly with `clear_query_history()` or configure a smaller `LANGQUERY_MAX_HISTORY_SIZE`.
+
 ### Configuration
 
 The query history feature can be configured via environment variables:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `LANGQUERY_WORKSPACE` | `workspace` | Directory for storing the history database file |
-| `LANGQUERY_MAX_RESULT_SIZE` | `1048576` (1MB) | Maximum size for cached query results in bytes |
-| `LANGQUERY_MAX_HISTORY_SIZE` | `100` | Maximum number of queries to keep in history |
-| `LANGQUERY_CLEANUP_FREQUENCY` | `10` | Run cleanup every N queries |
+| Variable | Default | Min | Max | Description |
+|----------|---------|-----|-----|-------------|
+| `LANGQUERY_WORKSPACE` | `workspace` | - | - | Directory for storing the history database file |
+| `LANGQUERY_MAX_RESULT_SIZE` | `1048576` (1MB) | 1KB | 10MB | Maximum size for cached query results in bytes |
+| `LANGQUERY_MAX_HISTORY_SIZE` | `100` | 1 | 10,000 | Maximum number of queries to keep in history |
+| `LANGQUERY_CLEANUP_FREQUENCY` | `10` | 1 | 1,000 | Run cleanup every N queries |
 
 Example:
 ```bash
