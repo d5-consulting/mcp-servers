@@ -10,7 +10,7 @@ COPY src/docx /app/src/docx
 WORKDIR /app
 
 # Install using workspace dependencies
-RUN uv sync --locked --package docx
+RUN uv sync --frozen --package docx
 
 EXPOSE 8005
 

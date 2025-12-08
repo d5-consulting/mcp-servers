@@ -10,7 +10,7 @@ COPY src/langquery /app/src/langquery
 WORKDIR /app
 
 # Install using workspace dependencies
-RUN uv sync --locked --package langquery
+RUN uv sync --frozen --package langquery
 
 EXPOSE 8000
 
