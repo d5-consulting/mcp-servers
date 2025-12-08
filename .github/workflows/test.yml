@@ -36,8 +36,7 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install dependencies for ${{ matrix.server }}
-        working-directory: src/${{ matrix.server }}
+      - name: Install all workspace dependencies
         run: uv sync --dev
 
       - name: Install Playwright browsers
