@@ -46,15 +46,17 @@ class HistoryDB:
         """Initialize the history database.
 
         Args:
-            db_path: Path to the database file. Defaults to workspace/langquery_history.db
+            db_path: Path to the database file. Defaults to $LANGQUERY_WORKSPACE/langquery_history.db
+                     or workspace/langquery_history.db if LANGQUERY_WORKSPACE is not set
 
         Raises:
             OSError: If workspace directory cannot be created
         """
         if db_path is None:
-            workspace = Path("workspace")
+            workspace_dir = os.getenv("LANGQUERY_WORKSPACE", "workspace")
+            workspace = Path(workspace_dir)
             try:
-                workspace.mkdir(exist_ok=True)
+                workspace.mkdir(parents=True, exist_ok=True)
             except OSError as e:
                 raise OSError(
                     f"Failed to create workspace directory at {workspace.absolute()}: {e}"
@@ -62,10 +64,14 @@ class HistoryDB:
             db_path = str(workspace / "langquery_history.db")
 
         self.db_path = db_path
-        self._query_count = 0  # Track queries for cleanup optimization
         self._counter_lock = Lock()  # Lock for thread-safe counter increment
         self._cleanup_in_progress = False  # Flag to prevent concurrent cleanup
         self._init_schema()
+
+        # Initialize counter from database to prevent drift after restart/clear
+        with duckdb.connect(self.db_path) as conn:
+            count = conn.execute("SELECT COUNT(*) FROM query_history").fetchone()[0]
+            self._query_count = count
 
     def _init_schema(self):
         """Initialize the database schema."""

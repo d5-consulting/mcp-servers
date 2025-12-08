@@ -123,6 +123,7 @@ The query history feature can be configured via environment variables:
 
 | Variable | Default | Description |
 |----------|---------|-------------|
+| `LANGQUERY_WORKSPACE` | `workspace` | Directory for storing the history database file |
 | `LANGQUERY_MAX_RESULT_SIZE` | `1048576` (1MB) | Maximum size for cached query results in bytes |
 | `LANGQUERY_MAX_HISTORY_SIZE` | `100` | Maximum number of queries to keep in history |
 | `LANGQUERY_CLEANUP_FREQUENCY` | `10` | Run cleanup every N queries |
