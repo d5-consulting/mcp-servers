@@ -91,6 +91,10 @@ class HistoryDB:
                     success BOOLEAN
                 )
             """)
+            # Create index on timestamp for better query performance
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_query_history_timestamp ON query_history(timestamp)
+            """)
 
     def log_query(
         self,
@@ -222,12 +226,41 @@ class HistoryDB:
             query, cached_result, error, success = result
 
             if not success:
-                return f"Query failed with error:\n{error}\n\nQuery was:\n{query}"
+                # Sanitize error message to avoid leaking sensitive information
+                # Remove file paths, internal database details, etc.
+                sanitized_error = self._sanitize_error(error) if error else "Unknown error"
+                return f"Query failed with error:\n{sanitized_error}\n\nQuery was:\n{query}"
 
             if cached_result is None:
                 return f"No cached result for query ID {query_id}."
 
             return cached_result
+
+    def _sanitize_error(self, error: str) -> str:
+        """Sanitize error messages to prevent information leakage.
+
+        Args:
+            error: Original error message
+
+        Returns:
+            Sanitized error message
+        """
+        import re
+
+        # Remove file paths (Unix and Windows style)
+        error = re.sub(r'(/[^\s]+)|([A-Z]:\\[^\s]+)', '[path]', error)
+
+        # Remove line numbers and column references that might expose internals
+        error = re.sub(r'line \d+', 'line [redacted]', error, flags=re.IGNORECASE)
+        error = re.sub(r'column \d+', 'column [redacted]', error, flags=re.IGNORECASE)
+
+        # Keep only the main error message, remove stack traces
+        lines = error.split('\n')
+        if lines:
+            # Return first meaningful line
+            return lines[0]
+
+        return error
 
     def search_history(self, search_term: str, limit: int = 10) -> str:
         """Search query history by query text.
