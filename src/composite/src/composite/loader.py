@@ -1,5 +1,6 @@
 """Server loader module for dynamically loading and registering MCP servers."""
 
+import copy
 import importlib
 import sys
 from pathlib import Path
@@ -185,8 +186,13 @@ class ServerLoader:
                     f"cannot register tool from '{prefix}' server"
                 )
 
-            # register tool in target mcp
-            target_mcp._tool_manager._tools[prefixed_name] = tool_obj
+            # create a copy of the tool object and update its name
+            # this ensures the registry key matches the tool's name attribute
+            tool_copy = copy.copy(tool_obj)
+            tool_copy.name = prefixed_name
+
+            # register tool copy in target mcp
+            target_mcp._tool_manager._tools[prefixed_name] = tool_copy
 
             count += 1
 
@@ -232,8 +238,13 @@ class ServerLoader:
                     f"cannot register prompt from '{prefix}' server"
                 )
 
-            # register prompt in target mcp
-            target_mcp._prompt_manager._prompts[prefixed_name] = prompt_obj
+            # create a copy of the prompt object and update its name
+            # this ensures the registry key matches the prompt's name attribute
+            prompt_copy = copy.copy(prompt_obj)
+            prompt_copy.name = prefixed_name
+
+            # register prompt copy in target mcp
+            target_mcp._prompt_manager._prompts[prefixed_name] = prompt_copy
 
             count += 1
 

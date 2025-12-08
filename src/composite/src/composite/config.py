@@ -70,6 +70,16 @@ class CompositeConfig:
         if not config_path.exists():
             raise FileNotFoundError(f"Configuration file not found: {config_path}")
 
+        # check file size to prevent yaml bomb attacks (max 1mb)
+        file_size = config_path.stat().st_size
+        max_size = 1024 * 1024  # 1mb
+        if file_size > max_size:
+            raise ValueError(
+                f"configuration file too large: {file_size} bytes "
+                f"(max {max_size} bytes)\n"
+                f"this prevents yaml bomb resource exhaustion attacks"
+            )
+
         try:
             with open(config_path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)

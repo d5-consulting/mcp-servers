@@ -127,3 +127,31 @@ servers:
 def test_missing_config_file():
     with pytest.raises(FileNotFoundError):
         CompositeConfig.from_yaml(Path("/nonexistent/config.yaml"))
+
+
+def test_yaml_size_limit():
+    """test that yaml files larger than 1mb are rejected"""
+    # create a large yaml file (>1mb) with valid structure
+    server_entry = """  - name: server{i}
+    module: module{i}
+    prefix: prefix{i}
+    enabled: true
+"""
+    # create enough entries to exceed 1mb
+    large_yaml = "servers:\n" + "".join(
+        server_entry.format(i=i) for i in range(15000)
+    )
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+        f.write(large_yaml)
+        f.flush()
+        config_path = Path(f.name)
+
+    try:
+        # verify file is over 1mb
+        assert config_path.stat().st_size > 1024 * 1024
+
+        with pytest.raises(ValueError, match="configuration file too large"):
+            CompositeConfig.from_yaml(config_path)
+    finally:
+        config_path.unlink()

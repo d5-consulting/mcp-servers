@@ -64,3 +64,42 @@ def test_validate_server_module(loader):
 
     invalid_mcp = MagicMock(spec=[])
     assert loader.validate_server_module(invalid_mcp) is False
+
+
+def test_tool_name_collision(loader):
+    """test that tool name collision is detected and raises error"""
+    config = ServerConfig(
+        name="browser", module="browser", prefix="browser", enabled=True
+    )
+    source_mcp = loader.load_server_module(config)
+
+    target_mcp = MagicMock()
+    target_mcp._tool_manager._tools = {}
+
+    # register tools once - should succeed
+    count1 = loader.register_tools(source_mcp, target_mcp, "test1")
+    assert count1 > 0
+
+    # try to register same tools with same prefix - should fail
+    with pytest.raises(ValueError, match="tool name collision"):
+        loader.register_tools(source_mcp, target_mcp, "test1")
+
+
+def test_prompt_name_collision(loader):
+    """test that prompt name collision is detected and raises error"""
+    # create mock mcp with prompts
+    source_mcp = MagicMock()
+    source_mcp._prompt_manager._prompts = {
+        "test_prompt": MagicMock(name="test_prompt")
+    }
+
+    target_mcp = MagicMock()
+    target_mcp._prompt_manager._prompts = {}
+
+    # register prompts once - should succeed
+    count1 = loader.register_prompts(source_mcp, target_mcp, "test")
+    assert count1 == 1
+
+    # try to register same prompts with same prefix - should fail
+    with pytest.raises(ValueError, match="prompt name collision"):
+        loader.register_prompts(source_mcp, target_mcp, "test")
