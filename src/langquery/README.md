@@ -49,6 +49,7 @@ docker compose up
 | `get_query_history` | View recent query history with execution metrics (default: last 20 queries) |
 | `get_cached_result` | Retrieve cached result from a previous query by ID |
 | `search_query_history` | Search query history by query text |
+| `clear_query_history` | Clear all query history (WARNING: permanently deletes all logged queries) |
 | `shell` | Execute shell commands |
 | `add` | Add two numbers |
 | `sub` | Subtract two numbers |
@@ -90,3 +91,28 @@ Search for specific queries:
 ```python
 search_query_history(search_term="sales", limit=10)
 ```
+
+Clear all history:
+```python
+clear_query_history()
+```
+
+### Security Considerations
+
+**IMPORTANT:** Query history logs all SQL queries with their full results. Be aware of the following:
+
+- **Sensitive Data**: Queries containing passwords, API keys, tokens, or PII (Personally Identifiable Information) will be logged in plaintext
+- **Data Exposure**: Query results are cached and stored unencrypted in `workspace/langquery_history.db`
+- **Storage Location**: The history database file is stored locally and persists between sessions
+
+**Best Practices:**
+1. **Avoid sensitive data in queries** - Don't use hardcoded credentials or PII in WHERE clauses
+2. **Regular cleanup** - Use `clear_query_history()` to remove sensitive data after use
+3. **Access control** - Ensure the workspace directory has appropriate file permissions
+4. **Consider encryption** - For production use with sensitive data, consider encrypting the workspace directory
+5. **Review logs** - Periodically review history to ensure no sensitive data is being logged
+
+**Storage Management:**
+- Results over 1MB are automatically truncated to prevent memory issues
+- History is automatically cleaned to keep last 100 queries
+- Manual cleanup available via `clear_query_history()` tool

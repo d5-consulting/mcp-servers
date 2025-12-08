@@ -1,3 +1,5 @@
+import re
+
 import pytest
 from fastmcp import Client
 
@@ -93,19 +95,16 @@ async def test_get_cached_result():
         history_text = history_res.content[0].text
 
         # Extract query ID from history (first number after "id")
-        # This is a simple extraction - in real code you might parse the markdown
-        import re
-
         match = re.search(r"\|\s*(\d+)\s*\|", history_text)
-        if match:
-            query_id = int(match.group(1))
+        assert match is not None, "Could not find query ID in history"
+        query_id = int(match.group(1))
 
-            # Get cached result
-            cached_res = await client.call_tool("get_cached_result", {"query_id": query_id})
-            cached_text = cached_res.content[0].text
+        # Get cached result
+        cached_res = await client.call_tool("get_cached_result", {"query_id": query_id})
+        cached_text = cached_res.content[0].text
 
-            # Verify cached result contains our value
-            assert "cached" in cached_text or "test_value" in cached_text
+        # Verify cached result contains our value
+        assert "cached" in cached_text or "test_value" in cached_text
 
 
 @pytest.mark.asyncio
@@ -141,3 +140,50 @@ async def test_query_history_limit():
 
         # Should have at most 1 data row (plus header and separator)
         assert len(lines) <= 3  # header + separator + 1 data row
+
+
+@pytest.mark.asyncio
+async def test_invalid_query_id():
+    """Test retrieving cached result with invalid query ID."""
+    async with Client(mcp) as client:
+        # Try to get result for non-existent query ID
+        cached_res = await client.call_tool("get_cached_result", {"query_id": 99999})
+        cached_text = cached_res.content[0].text
+
+        # Should return appropriate error message
+        assert "not found" in cached_text.lower()
+
+
+@pytest.mark.asyncio
+async def test_search_no_results():
+    """Test searching with term that matches no queries."""
+    async with Client(mcp) as client:
+        # Search for something that doesn't exist
+        search_res = await client.call_tool(
+            "search_query_history", {"search_term": "nonexistent_query_xyz123", "limit": 5}
+        )
+        search_text = search_res.content[0].text
+
+        # Should indicate no results found
+        assert "no queries found" in search_text.lower() or "nonexistent_query_xyz123" in search_text
+
+
+@pytest.mark.asyncio
+async def test_clear_history():
+    """Test clearing all query history."""
+    async with Client(mcp) as client:
+        # Execute a query to ensure there's something in history
+        await client.call_tool("query", {"sql": "SELECT 'to_be_cleared' as test"})
+
+        # Clear history
+        clear_res = await client.call_tool("clear_query_history", {})
+        clear_text = clear_res.content[0].text
+
+        # Should confirm deletion
+        assert "cleared" in clear_text.lower()
+
+        # Verify history is empty
+        history_res = await client.call_tool("get_query_history", {"limit": 10})
+        history_text = history_res.content[0].text
+
+        assert "no query history" in history_text.lower() or history_text.strip() == ""

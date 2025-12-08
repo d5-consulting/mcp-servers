@@ -110,6 +110,19 @@ def search_query_history(search_term: str, limit: int = 10) -> str:
     return history_db.search_history(search_term, limit)
 
 
+@mcp.tool()
+def clear_query_history() -> str:
+    """clear all query history.
+
+    WARNING: This will permanently delete all logged queries and cached results.
+
+    Returns:
+        success message with count of deleted queries
+    """
+    history_db = get_history_db()
+    return history_db.clear_history()
+
+
 # ======================================================
 # basic math operations
 # ======================================================

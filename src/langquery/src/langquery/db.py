@@ -3,9 +3,13 @@
 import os
 import time
 from pathlib import Path
+from threading import Lock
 from typing import Optional
 
 import duckdb
+
+# Maximum size for cached results (1MB)
+MAX_RESULT_SIZE = 1024 * 1024
 
 
 class HistoryDB:
@@ -16,13 +20,22 @@ class HistoryDB:
 
         Args:
             db_path: Path to the database file. Defaults to workspace/langquery_history.db
+
+        Raises:
+            OSError: If workspace directory cannot be created
         """
         if db_path is None:
             workspace = Path("workspace")
-            workspace.mkdir(exist_ok=True)
+            try:
+                workspace.mkdir(exist_ok=True)
+            except OSError as e:
+                raise OSError(
+                    f"Failed to create workspace directory at {workspace.absolute()}: {e}"
+                ) from e
             db_path = str(workspace / "langquery_history.db")
 
         self.db_path = db_path
+        self._query_count = 0  # Track queries for cleanup optimization
         self._init_schema()
 
     def _init_schema(self):
@@ -57,12 +70,16 @@ class HistoryDB:
 
         Args:
             query: The SQL query executed
-            result: Query result as text
+            result: Query result as text (truncated if > 1MB)
             execution_time_ms: Execution time in milliseconds
             row_count: Number of rows returned
             error: Error message if query failed
             success: Whether the query succeeded
         """
+        # Truncate large results to prevent memory issues
+        if result and len(result) > MAX_RESULT_SIZE:
+            result = result[:MAX_RESULT_SIZE] + "\n... (truncated)"
+
         with duckdb.connect(self.db_path) as conn:
             conn.execute(
                 """
@@ -72,15 +89,18 @@ class HistoryDB:
                 [query, result, execution_time_ms, row_count, error, success],
             )
 
-            # Keep only the last 100 queries
-            conn.execute("""
-                DELETE FROM query_history
-                WHERE id NOT IN (
-                    SELECT id FROM query_history
-                    ORDER BY timestamp DESC
-                    LIMIT 100
-                )
-            """)
+            # Optimize: only run cleanup every 10 queries
+            self._query_count += 1
+            if self._query_count % 10 == 0:
+                # Keep only the last 100 queries
+                conn.execute("""
+                    DELETE FROM query_history
+                    WHERE id NOT IN (
+                        SELECT id FROM query_history
+                        ORDER BY timestamp DESC
+                        LIMIT 100
+                    )
+                """)
 
     def get_history(self, limit: int = 20) -> str:
         """Get recent query history.
@@ -178,14 +198,38 @@ class HistoryDB:
 
             return result.to_markdown(index=False)
 
+    def clear_history(self) -> str:
+        """Clear all query history.
 
-# Global instance
+        Returns:
+            Success message with count of deleted queries
+        """
+        with duckdb.connect(self.db_path) as conn:
+            count_result = conn.execute("SELECT COUNT(*) FROM query_history").fetchone()
+            count = count_result[0] if count_result else 0
+
+            conn.execute("DELETE FROM query_history")
+            self._query_count = 0
+
+            return f"Cleared {count} queries from history."
+
+
+# Global instance with thread-safe initialization
 _history_db: Optional[HistoryDB] = None
+_lock = Lock()
 
 
 def get_history_db() -> HistoryDB:
-    """Get or create the global history database instance."""
+    """Get or create the global history database instance.
+
+    Thread-safe singleton pattern using double-checked locking.
+
+    Returns:
+        HistoryDB: The global history database instance
+    """
     global _history_db
     if _history_db is None:
-        _history_db = HistoryDB()
+        with _lock:
+            if _history_db is None:
+                _history_db = HistoryDB()
     return _history_db
