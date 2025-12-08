@@ -10,3 +10,4 @@ services:
       - ./src:/app/src/pdf/src
     environment:
       - TRANSPORT=sse
+      - PORT=8001
