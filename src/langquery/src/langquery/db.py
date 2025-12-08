@@ -1,15 +1,15 @@
 """Database management for query history."""
 
-import os
-import time
 from pathlib import Path
 from threading import Lock
 from typing import Optional
 
 import duckdb
 
-# Maximum size for cached results (1MB)
-MAX_RESULT_SIZE = 1024 * 1024
+# Configuration constants
+MAX_RESULT_SIZE = 1024 * 1024  # Maximum size for cached results (1MB)
+MAX_HISTORY_SIZE = 100  # Maximum number of queries to keep in history
+CLEANUP_FREQUENCY = 10  # Run cleanup every N queries
 
 
 class HistoryDB:
@@ -36,6 +36,7 @@ class HistoryDB:
 
         self.db_path = db_path
         self._query_count = 0  # Track queries for cleanup optimization
+        self._counter_lock = Lock()  # Lock for thread-safe counter increment
         self._init_schema()
 
     def _init_schema(self):
@@ -89,18 +90,27 @@ class HistoryDB:
                 [query, result, execution_time_ms, row_count, error, success],
             )
 
-            # Optimize: only run cleanup every 10 queries
-            self._query_count += 1
-            if self._query_count % 10 == 0:
-                # Keep only the last 100 queries
-                conn.execute("""
+            # Thread-safe counter increment and cleanup check
+            with self._counter_lock:
+                self._query_count += 1
+                should_cleanup = self._query_count % CLEANUP_FREQUENCY == 0
+
+            if should_cleanup:
+                # Keep only the last MAX_HISTORY_SIZE queries
+                # More efficient: delete based on timestamp threshold
+                conn.execute(
+                    """
                     DELETE FROM query_history
-                    WHERE id NOT IN (
-                        SELECT id FROM query_history
-                        ORDER BY timestamp DESC
-                        LIMIT 100
+                    WHERE timestamp < (
+                        SELECT MIN(timestamp) FROM (
+                            SELECT timestamp FROM query_history
+                            ORDER BY timestamp DESC
+                            LIMIT ?
+                        )
                     )
-                """)
+                """,
+                    [MAX_HISTORY_SIZE],
+                )
 
     def get_history(self, limit: int = 20) -> str:
         """Get recent query history.
@@ -209,7 +219,10 @@ class HistoryDB:
             count = count_result[0] if count_result else 0
 
             conn.execute("DELETE FROM query_history")
-            self._query_count = 0
+
+            # Thread-safe counter reset
+            with self._counter_lock:
+                self._query_count = 0
 
             return f"Cleared {count} queries from history."
 

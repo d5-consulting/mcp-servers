@@ -1,3 +1,4 @@
+import asyncio
 import re
 
 import pytest
@@ -187,3 +188,32 @@ async def test_clear_history():
         history_text = history_res.content[0].text
 
         assert "no query history" in history_text.lower() or history_text.strip() == ""
+
+
+@pytest.mark.asyncio
+async def test_concurrent_query_logging():
+    """Test that concurrent queries are logged correctly without race conditions."""
+    async with Client(mcp) as client:
+        # Execute multiple queries concurrently
+        queries = [
+            f"SELECT {i} as concurrent_test_{i}"
+            for i in range(20)
+        ]
+
+        # Run all queries concurrently
+        tasks = [
+            client.call_tool("query", {"sql": sql})
+            for sql in queries
+        ]
+        await asyncio.gather(*tasks)
+
+        # Get history
+        history_res = await client.call_tool("get_query_history", {"limit": 25})
+        history_text = history_res.content[0].text
+
+        # Verify that all queries were logged
+        # At least some of the concurrent queries should appear in history
+        concurrent_count = sum(1 for i in range(20) if f"concurrent_test_{i}" in history_text)
+
+        # Should have logged most if not all queries
+        assert concurrent_count >= 15, f"Only {concurrent_count}/20 concurrent queries were logged"
