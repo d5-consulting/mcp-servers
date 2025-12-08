@@ -1,5 +1,5 @@
 services:
-  mcp:
+  browser:
     build:
       context: ../..
       dockerfile: src/browser/Dockerfile
