@@ -8,21 +8,18 @@ from fastmcp import Context
 @pytest_asyncio.fixture(scope="function")
 async def mock_context():
     """Create a mock FastMCP context for testing."""
+    from dify.tools import DifyClient
 
-    class MockState:
-        def __init__(self):
-            from dify.tools import DifyClient
-
-            self.client = DifyClient(
-                api_key="test-api-key",
-                base_url="https://test.dify.ai/v1",
-                console_api_key="test-console-key",
-                console_base_url="https://test.dify.ai",
-            )
+    client = DifyClient(
+        api_key="test-api-key",
+        base_url="https://test.dify.ai/v1",
+        console_api_key="test-console-key",
+        console_base_url="https://test.dify.ai",
+    )
 
     class MockRequestContext:
         def __init__(self):
-            self.state = MockState()
+            self.lifespan_state = {"client": client}
 
     class MockContext:
         def __init__(self):
@@ -31,4 +28,4 @@ async def mock_context():
     ctx = MockContext()
     yield ctx
     # Clean up the HTTP client
-    await ctx.request_context.state.client.close()
+    await client.close()

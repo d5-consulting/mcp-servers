@@ -136,7 +136,7 @@ async def chat_message(
     if not query or not query.strip():
         raise ToolError("Query cannot be empty")
 
-    client = ctx.request_context.state.client
+    client = ctx.request_context.lifespan_state["client"]
 
     payload: dict[str, Any] = {
         "query": query,
@@ -181,7 +181,7 @@ async def run_workflow(
     Returns:
         Workflow execution results including outputs and metadata
     """
-    client = ctx.request_context.state.client
+    client = ctx.request_context.lifespan_state["client"]
 
     payload: dict[str, Any] = {
         "inputs": inputs,
@@ -215,7 +215,7 @@ async def get_conversation_messages(
     Returns:
         List of message objects with content, role, and metadata
     """
-    client = ctx.request_context.state.client
+    client = ctx.request_context.lifespan_state["client"]
 
     params: dict[str, Any] = {
         "user": user,
@@ -258,7 +258,7 @@ async def create_dataset(
     Returns:
         Dataset object with id, name, and configuration
     """
-    client = ctx.request_context.state.client
+    client = ctx.request_context.lifespan_state["client"]
 
     payload: dict[str, Any] = {
         "name": name,
@@ -305,7 +305,7 @@ async def upload_document_by_text(
     if not name or not name.strip():
         raise ToolError("Document name cannot be empty")
 
-    client = ctx.request_context.state.client
+    client = ctx.request_context.lifespan_state["client"]
 
     payload: dict[str, Any] = {
         "name": name,
@@ -342,7 +342,7 @@ async def list_documents(
     Returns:
         Paginated list of documents with metadata
     """
-    client = ctx.request_context.state.client
+    client = ctx.request_context.lifespan_state["client"]
 
     params: dict[str, Any] = {
         "page": page,
@@ -392,7 +392,7 @@ async def import_dsl_workflow(
     if not dsl_content and not dsl_url:
         raise ToolError("Either dsl_content or dsl_url must be provided")
 
-    client = ctx.request_context.state.client
+    client = ctx.request_context.lifespan_state["client"]
 
     payload: dict[str, Any] = {}
 
@@ -448,7 +448,7 @@ async def export_dsl_workflow(
     Returns:
         YAML content of the application DSL
     """
-    client = ctx.request_context.state.client
+    client = ctx.request_context.lifespan_state["client"]
 
     params = {"include_secret": "true" if include_secret else "false"}
 

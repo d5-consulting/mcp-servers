@@ -1,6 +1,7 @@
 """Dify MCP Server."""
 
 import os
+from contextlib import asynccontextmanager
 
 from fastmcp import FastMCP
 from starlette.middleware import Middleware
@@ -19,18 +20,18 @@ from .tools import (
     upload_document_by_text,
 )
 
-# Initialize FastMCP server
-mcp = FastMCP("Dify AI Agent Builder")
-
 
 # Lifecycle hook to initialize client
-@mcp.lifespan()
-async def lifespan(request_context):
+@asynccontextmanager
+async def app_lifespan():
     """Initialize Dify client for the session."""
     client = DifyClient()
-    request_context.state.client = client
-    yield
+    yield {"client": client}
     await client.close()
+
+
+# Initialize FastMCP server with lifespan
+mcp = FastMCP("Dify AI Agent Builder", lifespan=app_lifespan)
 
 
 # Register tools

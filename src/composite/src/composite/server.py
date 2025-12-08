@@ -2,6 +2,7 @@
 
 import os
 import sys
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastmcp import FastMCP, Context
@@ -22,22 +23,22 @@ for path in [str(browser_src), str(dify_src)]:
 import dify.tools as dify_tools  # noqa: E402
 from dify.tools import DifyClient  # noqa: E402
 
-# Initialize composite FastMCP server
-mcp = FastMCP("Composite: Dify + Browser")
-
 
 # Lifecycle hook to initialize Dify client
-@mcp.lifespan()
-async def lifespan(request_context):
+@asynccontextmanager
+async def app_lifespan():
     """Initialize Dify client for the session."""
     client = DifyClient()
-    request_context.state.client = client
-    yield
+    yield {"client": client}
     await client.close()
 
 
+# Initialize composite FastMCP server with lifespan
+mcp = FastMCP("Composite: Dify + Browser", lifespan=app_lifespan)
+
+
 # Register Dify tools with prefixed names
-# Note: These tools expect ctx.request_context.state.client to exist
+# Note: These tools expect ctx.request_context.lifespan_state["client"] to exist
 # Users should ensure DIFY_API_KEY and DIFY_CONSOLE_API_KEY are set
 mcp.tool(name="dify_chat_message")(dify_tools.chat_message)
 mcp.tool(name="dify_run_workflow")(dify_tools.run_workflow)
