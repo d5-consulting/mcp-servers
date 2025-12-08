@@ -1,6 +1,4 @@
-"""Entry point for the composite MCP server."""
-
-from .server import serve
+from . import server
 
 if __name__ == "__main__":
-    serve()
+    server.serve()

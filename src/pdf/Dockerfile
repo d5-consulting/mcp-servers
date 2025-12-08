@@ -10,7 +10,7 @@ COPY src/pdf /app/src/pdf
 WORKDIR /app
 
 # Install using workspace dependencies with OCR support
-RUN uv sync --locked --package pdf --extra ocr
+RUN uv sync --frozen --package pdf --extra ocr
 
 EXPOSE 8001
 

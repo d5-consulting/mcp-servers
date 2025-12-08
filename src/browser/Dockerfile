@@ -9,7 +9,7 @@ COPY src/browser /app/src/browser
 WORKDIR /app
 
 # Install using workspace dependencies
-RUN uv sync --locked --package browser
+RUN uv sync --frozen --package browser
 
 EXPOSE 8007
 

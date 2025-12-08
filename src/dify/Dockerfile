@@ -10,7 +10,7 @@ COPY src/dify /app/src/dify
 WORKDIR /app
 
 # Install using workspace dependencies
-RUN uv sync --locked --package dify
+RUN uv sync --frozen --package dify
 
 # Expose port for SSE/HTTP transport
 EXPOSE 8006

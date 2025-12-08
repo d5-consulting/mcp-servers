@@ -10,7 +10,7 @@ COPY src/xlsx /app/src/xlsx
 WORKDIR /app
 
 # Install using workspace dependencies
-RUN uv sync --locked --package xlsx
+RUN uv sync --frozen --package xlsx
 
 EXPOSE 8004
 

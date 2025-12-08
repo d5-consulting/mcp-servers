@@ -10,7 +10,7 @@ COPY src/pptx /app/src/pptx
 WORKDIR /app
 
 # Install using workspace dependencies
-RUN uv sync --locked --package pptx
+RUN uv sync --frozen --package pptx
 
 EXPOSE 8003
 

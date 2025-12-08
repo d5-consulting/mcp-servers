@@ -10,7 +10,7 @@ COPY src/vectorstore /app/src/vectorstore
 WORKDIR /app
 
 # Install using workspace dependencies
-RUN uv sync --locked --package vectorstore
+RUN uv sync --frozen --package vectorstore
 
 EXPOSE 8002
 

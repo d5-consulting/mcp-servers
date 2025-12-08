@@ -1,0 +1,134 @@
+services:
+  # Lightweight composite server - routes requests to backend servers
+  composite:
+    build:
+      context: ../..
+      dockerfile: src/composite/Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./composite-config.yaml:/app/composite-config.yaml:ro
+    environment:
+      - COMPOSITE_CONFIG_PATH=/app/composite-config.yaml
+      - HOST=0.0.0.0
+      - PORT=8000
+    depends_on:
+      - browser
+      - dify
+      - pdf
+      - xlsx
+      - docx
+      - pptx
+      - vectorstore
+      - langquery
+    restart: unless-stopped
+    networks:
+      - mcp-network
+
+  # Backend MCP servers
+  browser:
+    image: browser:latest
+    build:
+      context: ../..
+      dockerfile: src/browser/Dockerfile
+    environment:
+      - TRANSPORT=sse
+      - HOST=0.0.0.0
+      - PORT=8007
+      - BROWSER_TIMEOUT=${BROWSER_TIMEOUT:-30000}
+      - NAVIGATION_TIMEOUT=${NAVIGATION_TIMEOUT:-60000}
+    networks:
+      - mcp-network
+
+  dify:
+    image: dify:latest
+    build:
+      context: ../..
+      dockerfile: src/dify/Dockerfile
+    environment:
+      - TRANSPORT=sse
+      - HOST=0.0.0.0
+      - PORT=8001
+      - DIFY_API_KEY=${DIFY_API_KEY}
+      - DIFY_BASE_URL=${DIFY_BASE_URL:-https://api.dify.ai/v1}
+      - DIFY_CONSOLE_API_KEY=${DIFY_CONSOLE_API_KEY}
+      - DIFY_CONSOLE_BASE_URL=${DIFY_CONSOLE_BASE_URL:-https://api.dify.ai}
+    networks:
+      - mcp-network
+
+  pdf:
+    image: pdf:latest
+    build:
+      context: ../..
+      dockerfile: src/pdf/Dockerfile
+    environment:
+      - TRANSPORT=sse
+      - HOST=0.0.0.0
+      - PORT=8008
+    networks:
+      - mcp-network
+
+  xlsx:
+    image: xlsx:latest
+    build:
+      context: ../..
+      dockerfile: src/xlsx/Dockerfile
+    environment:
+      - TRANSPORT=sse
+      - HOST=0.0.0.0
+      - PORT=8004
+    networks:
+      - mcp-network
+
+  docx:
+    image: docx:latest
+    build:
+      context: ../..
+      dockerfile: src/docx/Dockerfile
+    environment:
+      - TRANSPORT=sse
+      - HOST=0.0.0.0
+      - PORT=8005
+    networks:
+      - mcp-network
+
+  pptx:
+    image: pptx:latest
+    build:
+      context: ../..
+      dockerfile: src/pptx/Dockerfile
+    environment:
+      - TRANSPORT=sse
+      - HOST=0.0.0.0
+      - PORT=8003
+    networks:
+      - mcp-network
+
+  vectorstore:
+    image: vectorstore:latest
+    build:
+      context: ../..
+      dockerfile: src/vectorstore/Dockerfile
+    environment:
+      - TRANSPORT=sse
+      - HOST=0.0.0.0
+      - PORT=8002
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    networks:
+      - mcp-network
+
+  langquery:
+    image: langquery:latest
+    build:
+      context: ../..
+      dockerfile: src/langquery/Dockerfile
+    environment:
+      - TRANSPORT=sse
+      - HOST=0.0.0.0
+      - PORT=8006
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
