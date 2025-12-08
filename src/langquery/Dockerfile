@@ -12,4 +12,6 @@ WORKDIR /app
 # Install using workspace dependencies
 RUN uv sync --locked --package langquery
 
+EXPOSE 8000
+
 CMD ["uv", "run", "python", "-m", "langquery"]

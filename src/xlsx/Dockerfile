@@ -12,4 +12,6 @@ WORKDIR /app
 # Install using workspace dependencies
 RUN uv sync --locked --package xlsx
 
+EXPOSE 8004
+
 CMD ["uv", "run", "python", "-m", "xlsx"]

@@ -12,4 +12,6 @@ WORKDIR /app
 # Install using workspace dependencies
 RUN uv sync --locked --package pptx
 
+EXPOSE 8003
+
 CMD ["uv", "run", "python", "-m", "pptx_server"]
