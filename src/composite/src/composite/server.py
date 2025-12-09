@@ -25,6 +25,7 @@ def load_config() -> dict:
     config_path = Path(config_path)
 
     if not config_path.exists():
+        logger.warning("Config file not found at %s, starting with no mounted servers", config_path)
         return {"servers": {}}
 
     with open(config_path) as f:
