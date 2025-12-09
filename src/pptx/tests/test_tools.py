@@ -171,3 +171,51 @@ async def test_get_slide_shapes(temp_pptx):
         )
         # Should return JSON array
         assert "[" in res.content[0].text
+
+
+# ======================================================
+# Marp Tests
+# ======================================================
+
+
+@pytest.mark.asyncio
+async def test_marp_list_themes():
+    async with Client(mcp) as client:
+        res = await client.call_tool("marp_list_themes", {})
+        text = res.content[0].text
+        # Should list all themes
+        assert "noir" in text
+        assert "brutalist" in text
+        assert "organic" in text
+        assert "neon" in text
+        assert "minimal" in text
+        assert "retro" in text
+
+
+@pytest.mark.asyncio
+async def test_marp_get_theme_css():
+    async with Client(mcp) as client:
+        res = await client.call_tool("marp_get_theme_css", {"theme": "noir"})
+        text = res.content[0].text
+        # Should contain CSS
+        assert "Noir" in text
+        assert "css" in text.lower()
+
+
+@pytest.mark.asyncio
+async def test_marp_get_theme_css_invalid():
+    async with Client(mcp) as client:
+        res = await client.call_tool("marp_get_theme_css", {"theme": "nonexistent"})
+        text = res.content[0].text
+        # Should return error
+        assert "Error" in text
+        assert "nonexistent" in text
+
+
+@pytest.mark.asyncio
+async def test_marp_check_requirements():
+    async with Client(mcp) as client:
+        res = await client.call_tool("marp_check_requirements", {})
+        text = res.content[0].text
+        # Should check for Node.js
+        assert "Node.js" in text
