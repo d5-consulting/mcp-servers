@@ -339,7 +339,9 @@ style: |
 # Content
 """
     sanitized = _sanitize_frontmatter(import_injection)
-    assert "import" not in sanitized.lower() or "@import" not in sanitized
+    # The style line with @import should be removed entirely
+    assert "@import" not in sanitized
+    assert "evil.com" not in sanitized
 
 
 def test_marp_no_frontmatter_passthrough():
