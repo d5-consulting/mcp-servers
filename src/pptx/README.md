@@ -109,14 +109,9 @@ Contact: hello@example.com
 
 ### Available Themes
 
-| Theme | Aesthetic | Best For |
-|-------|-----------|----------|
-| `noir` | Editorial/Film Noir, high-contrast dark | Tech, cinema, premium brands |
-| `brutalist` | Raw, bold, Swiss typography | Design, architecture, statements |
-| `organic` | Warm, natural, earthy | Wellness, sustainability, lifestyle |
-| `neon` | Cyberpunk, glowing accents | Gaming, tech startups, innovation |
-| `minimal` | Swiss/Minimalist, refined | Professional, content-heavy |
-| `retro` | 70s/80s nostalgic, geometric | Creative, fun, distinctive |
+Themes are provided by the **frontend-design** MCP server. Use `design_list_themes()` to see all options.
+
+Available themes: `noir`, `brutalist`, `organic`, `neon`, `minimal`, `retro`
 
 ### Marp Tools
 
@@ -124,9 +119,9 @@ Contact: hello@example.com
 |------|-------------|
 | `marp_create_presentation` | Create PPTX from Markdown with a theme |
 | `marp_create_presentation_from_file` | Create PPTX from a Markdown file |
-| `marp_list_themes` | List all available themes |
 | `marp_check_requirements` | Check if Node.js and browser are available |
-| `marp_get_theme_css` | Get the CSS source for a theme |
+
+For theme details, use `design_list_themes()` and `design_get_theme()` from the frontend-design server.
 
 ## All Available Tools
 
@@ -136,9 +131,9 @@ Contact: hello@example.com
 |------|-------------|
 | `marp_create_presentation` | Create PPTX from Markdown with a theme |
 | `marp_create_presentation_from_file` | Create PPTX from a Markdown file |
-| `marp_list_themes` | List all available themes |
 | `marp_check_requirements` | Check Node.js and browser availability |
-| `marp_get_theme_css` | Get CSS source for a theme |
+
+> **Note:** Theme listing and details are provided by the frontend-design MCP server (`design_list_themes`, `design_get_theme`).
 
 ### Presentation Creation (Low-Level)
 

@@ -13,7 +13,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from frontend_design.themes import THEMES, get_theme, list_themes
+from frontend_design.themes import THEMES, get_theme
 
 from . import mcp
 
@@ -147,26 +147,7 @@ paginate: true
 # ======================================================
 
 
-@mcp.tool()
-def marp_list_themes() -> str:
-    """
-    List all available Marp presentation themes.
-
-    Each theme has a distinctive aesthetic direction following
-    professional design principles.
-
-    Returns:
-        JSON-formatted list of themes with descriptions
-    """
-    themes = list_themes()
-    result = ["# Available Marp Themes\n"]
-
-    for name, info in themes.items():
-        result.append(f"## {info['name']} (`{name}`)")
-        result.append(f"**Aesthetic**: {info['aesthetic']}")
-        result.append(f"{info['description']}\n")
-
-    return "\n".join(result)
+# Note: Theme listing is provided by frontend-design server via design_list_themes()
 
 
 @mcp.tool()
@@ -320,31 +301,4 @@ def marp_check_requirements() -> str:
     return "\n".join(results)
 
 
-@mcp.tool()
-def marp_get_theme_css(theme: str) -> str:
-    """
-    Get the CSS source for a Marp theme.
-
-    Useful for customization or understanding theme structure.
-
-    Args:
-        theme: Theme name - one of: noir, brutalist, organic, neon, minimal, retro
-
-    Returns:
-        CSS content of the theme
-    """
-    if theme not in THEMES:
-        return f"Error: Unknown theme '{theme}'. Available: {list(THEMES.keys())}"
-
-    info = get_theme(theme)
-    return f"""# {info["name"]} Theme
-
-**Aesthetic**: {info["aesthetic"]}
-**Description**: {info["description"]}
-
-## CSS Source:
-
-```css
-{info["marp_css"]}
-```
-"""
+# Note: Theme CSS is provided by frontend-design server via design_get_theme()

@@ -133,17 +133,10 @@ Contact: email@example.com
 ## Workflow
 
 1. Check requirements: `marp_check_requirements()`
-2. List themes: `marp_list_themes()`
+2. List themes: `design_list_themes()` (from frontend-design server)
 3. Create presentation: `marp_create_presentation(markdown, output_path, theme)`
 
-## Design Philosophy
-
-These themes follow the frontend-design skill principles:
-- **Bold aesthetic direction** - Each theme commits to a specific look
-- **Distinctive typography** - No generic fonts (Inter, Roboto, Arial avoided)
-- **Intentional color palettes** - Cohesive, purposeful color choices
-- **Visual hierarchy** - Clear structure through size, weight, color
-- **Memorable details** - Accents, shapes, and textures that stand out
+For design principles and theme details, see the frontend-design server prompts.
 """
 
 
@@ -400,7 +393,7 @@ def pptx_design_principles() -> str:
     """Design principles for presentations - references frontend-design server."""
     return """# PPTX Design Principles
 
-For comprehensive design guidance, use the **frontend-design** MCP server which provides:
+For comprehensive design guidance, use the **frontend-design** MCP server.
 
 ## Design Prompts (via frontend-design)
 - `design_thinking` - Purpose, audience, and differentiation strategy
@@ -415,24 +408,5 @@ For comprehensive design guidance, use the **frontend-design** MCP server which 
 - `design_suggest_palette(mood, industry)` - Get palette recommendations
 - `design_check_contrast(fg, bg)` - Verify WCAG accessibility
 
-## Available Marp Themes
-
-| Theme | Aesthetic | When to Use |
-|-------|-----------|-------------|
-| `noir` | Editorial/Film Noir | Premium, cinematic, tech |
-| `brutalist` | Raw, Swiss typography | Design, architecture |
-| `organic` | Warm, earthy | Wellness, sustainability |
-| `neon` | Cyberpunk, glowing | Gaming, innovation |
-| `minimal` | Refined, content-first | Professional, clean |
-| `retro` | 70s/80s nostalgic | Creative, fun |
-
-## Quick Reference
-
-**Core principles:**
-- Avoid generic fonts (Inter, Roboto, Arial)
-- Commit to 3-5 colors with clear hierarchy
-- Match layout to content (don't force mismatches)
-- Create visual hierarchy through size, weight, color
-
-**For detailed guidance, query the frontend-design server's prompts.**
+For theme details and design guidance, query the frontend-design server.
 """
