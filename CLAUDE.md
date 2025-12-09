@@ -81,6 +81,20 @@ Replace `your_key_name` with your actual SSH key filename (e.g., `id_ed25519`, `
 - Claude Desktop MCP settings path: `~/Library/Application Support/Claude`
 - Use this path when testing MCP servers with Claude Code or Claude Desktop integration
 
+### Linting and Formatting
+
+Always run ruff to check and format code before committing:
+
+```bash
+# Fix linting issues automatically
+uv run ruff check --fix
+
+# Format code
+uv run ruff format
+```
+
+Run these commands from the repository root to check the entire codebase.
+
 ### Documentation Standards
 
 Each MCP server must have a README.md with:
