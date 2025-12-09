@@ -6,56 +6,56 @@ backends:
   - name: browser
     url: http://browser:8007/sse
     prefix: browser
-    enabled: true
+    enabled: false
     description: Browser automation using Playwright
 
   # Dify AI platform server
   - name: dify
     url: http://dify:8001/sse
     prefix: dify
-    enabled: true
+    enabled: false
     description: AI agent building and workflow management
 
   # PDF operations server
   - name: pdf
     url: http://pdf:8008/sse
     prefix: pdf
-    enabled: true
+    enabled: false
     description: PDF manipulation and extraction
 
   # Spreadsheet operations server
   - name: xlsx
     url: http://xlsx:8004/sse
     prefix: xlsx
-    enabled: true
+    enabled: false
     description: Excel spreadsheet operations
 
   # Document operations server
   - name: docx
     url: http://docx:8005/sse
     prefix: docx
-    enabled: true
+    enabled: false
     description: Word document operations
 
   # Presentation operations server
   - name: pptx
     url: http://pptx:8003/sse
     prefix: pptx
-    enabled: true
+    enabled: false
     description: PowerPoint operations
 
   # Vector database server
   - name: vectorstore
     url: http://vectorstore:8002/sse
     prefix: vec
-    enabled: true
+    enabled: false
     description: Vector database operations
 
   # Language query server
   - name: langquery
-    url: http://langquery:8006/sse
+    url: http://localhost:8006/sse
     prefix: lang
-    enabled: false
+    enabled: true
     description: Language query operations
 
 # Configuration notes:
