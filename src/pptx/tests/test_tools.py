@@ -225,15 +225,33 @@ async def test_marp_create_presentation_from_file_not_found():
 # Test validation functions directly
 def test_marp_path_validation():
     """Test that forbidden paths are rejected."""
-    from pptx_server.marp import _validate_output_path
     from pathlib import Path
+
+    from pptx_server.marp import _validate_output_path
 
     # Should raise for system directories
     with pytest.raises(ValueError, match="system directory"):
-        _validate_output_path(Path("/etc/passwd"))
+        _validate_output_path(Path("/etc/passwd.pptx"))
 
     with pytest.raises(ValueError, match="system directory"):
         _validate_output_path(Path("/usr/bin/test.pptx"))
+
+
+def test_marp_extension_validation():
+    """Test that non-.pptx extensions are rejected."""
+    from pathlib import Path
+
+    from pptx_server.marp import _validate_output_path
+
+    # Should raise for wrong extension
+    with pytest.raises(ValueError, match=".pptx extension"):
+        _validate_output_path(Path("/tmp/test.pdf"))
+
+    with pytest.raises(ValueError, match=".pptx extension"):
+        _validate_output_path(Path("/tmp/test.exe"))
+
+    with pytest.raises(ValueError, match=".pptx extension"):
+        _validate_output_path(Path("/tmp/test"))
 
 
 def test_marp_markdown_size_validation():
@@ -326,6 +344,46 @@ style: |
 """
     sanitized = _sanitize_frontmatter(style_injection)
     assert "url(" not in sanitized
+    assert "evil.com" not in sanitized
+
+
+def test_marp_frontmatter_blocks_multiline_style():
+    """Test that multi-line style blocks with dangerous content are blocked."""
+    from pptx_server.marp import _sanitize_frontmatter
+
+    # Test multi-line style block with url()
+    multiline_injection = """---
+marp: true
+theme: minimal
+style: |
+  section {
+    color: red;
+  }
+  .special {
+    background-image: url(https://evil.com/track.png);
+  }
+---
+
+# Content
+"""
+    sanitized = _sanitize_frontmatter(multiline_injection)
+    assert "url(" not in sanitized
+    assert "evil.com" not in sanitized
+    # Theme should still be present
+    assert "theme: minimal" in sanitized
+
+    # Test multi-line style block with @import
+    import_injection = """---
+marp: true
+style: >
+  @import url('https://evil.com/malicious.css');
+  section { color: blue; }
+---
+
+# Content
+"""
+    sanitized = _sanitize_frontmatter(import_injection)
+    assert "@import" not in sanitized
     assert "evil.com" not in sanitized
 
 

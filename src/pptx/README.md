@@ -216,7 +216,31 @@ For pixel-perfect control over positioning:
 - `fastmcp` - MCP server framework
 - `lxml` - XML processing
 - `pillow` - Image handling
+- `frontend-design` - Workspace package for theme definitions
 
 For Marp features:
 - Node.js v18+ with npx
 - Chrome, Edge, or Firefox (for PPTX export)
+
+## Security Considerations
+
+### Marp Conversion
+
+The Marp conversion includes several security measures:
+
+**Protected:**
+- **Frontmatter injection**: Dangerous keys like `backgroundImage`, `html`, `script` are stripped
+- **External resources**: `url()` and `@import` in style blocks are blocked
+- **Multi-line attacks**: Both single-line and multi-line YAML blocks are sanitized
+- **Path traversal**: System directories (`/etc`, `/usr`, etc.) are blocked
+- **File extension**: Only `.pptx` output is allowed
+- **Resource limits**: 2MB markdown size limit, 60-second timeout
+
+**User responsibility:**
+- **Inline HTML in markdown content**: HTML tags like `<style>`, `<script>` within the markdown body (not frontmatter) are NOT sanitized. Review presentations before sharing if markdown comes from untrusted sources.
+
+### Recommendations
+
+When processing markdown from untrusted sources:
+1. Review the generated presentation before distribution
+2. Consider running Marp with `--html false` if HTML is not needed (requires custom integration)

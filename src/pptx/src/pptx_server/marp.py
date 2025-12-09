@@ -92,10 +92,16 @@ def _check_browser() -> bool:
 def _validate_output_path(path: Path) -> None:
     """Validate output path is safe to write to."""
     path_str = str(path)
+
+    # Validate file extension
+    if path.suffix.lower() != ".pptx":
+        raise ValueError(f"Output file must have .pptx extension, got: {path.suffix}")
+
     # Check for forbidden system directories
     for forbidden in FORBIDDEN_PATHS:
         if path_str.startswith(forbidden):
             raise ValueError(f"Cannot write to system directory: {forbidden}")
+
     # Ensure parent directory exists or can be created
     if not path.parent.exists():
         try:
@@ -112,6 +118,8 @@ def _sanitize_frontmatter(markdown_content: str) -> str:
     - Loading external resources (backgroundImage with url())
     - Executing arbitrary code
     - Overriding security-sensitive settings
+
+    Handles multi-line YAML values (using | or > syntax).
 
     Args:
         markdown_content: Raw markdown content
@@ -134,26 +142,69 @@ def _sanitize_frontmatter(markdown_content: str) -> str:
     if frontmatter_end <= 0:
         return markdown_content
 
-    # Filter frontmatter lines
+    # Filter frontmatter lines, handling multi-line values
     sanitized_lines = [lines[0]]  # Keep opening ---
+    current_key = None
+    skip_until_next_key = False
+
     for line in lines[1:frontmatter_end]:
-        # Skip empty lines and comments
         stripped = line.strip()
+
+        # Skip empty lines and comments
         if not stripped or stripped.startswith("#"):
-            sanitized_lines.append(line)
+            if not skip_until_next_key:
+                sanitized_lines.append(line)
             continue
 
-        # Check if the key is allowed
-        if ":" in line:
+        # Check if this is a new key (not indented or less indented than current block)
+        if ":" in line and not line[0].isspace():
+            # This is a new top-level key
             key = line.split(":")[0].strip().lower()
+            current_key = key
+
             if key in ALLOWED_FRONTMATTER_KEYS:
-                # Additional check: block backgroundImage with url()
+                # Check for dangerous content in the value part
+                value_part = line.split(":", 1)[1] if ":" in line else ""
+                lower_value = value_part.lower()
+
                 if key in ("image", "style"):
-                    lower_line = line.lower()
-                    if "url(" in lower_line or "import" in lower_line:
-                        continue  # Skip lines with url() or @import
-                sanitized_lines.append(line)
-            # Silently drop disallowed keys
+                    if "url(" in lower_value or "import" in lower_value:
+                        skip_until_next_key = True
+                        continue
+
+                # Check if this starts a multi-line block (ends with | or >)
+                if value_part.strip() in ("|", ">", "|+", "|-", ">+", ">-"):
+                    # Multi-line block - will check following indented lines
+                    skip_until_next_key = False
+                    sanitized_lines.append(line)
+                else:
+                    skip_until_next_key = False
+                    sanitized_lines.append(line)
+            else:
+                # Disallowed key - skip it and any continuation lines
+                skip_until_next_key = True
+
+        elif skip_until_next_key:
+            # We're in a block we're skipping
+            continue
+
+        elif current_key in ("image", "style"):
+            # We're in a multi-line block for image/style - check for dangerous content
+            lower_line = line.lower()
+            if "url(" in lower_line or "import" in lower_line:
+                # Dangerous content found - skip this entire key's block
+                # Remove the key line we already added
+                while sanitized_lines and sanitized_lines[-1].strip():
+                    last = sanitized_lines.pop()
+                    if ":" in last and not last[0].isspace():
+                        break
+                skip_until_next_key = True
+                continue
+            sanitized_lines.append(line)
+
+        else:
+            # Continuation of an allowed key
+            sanitized_lines.append(line)
 
     # Add remaining lines (closing --- and content)
     sanitized_lines.extend(lines[frontmatter_end:])
