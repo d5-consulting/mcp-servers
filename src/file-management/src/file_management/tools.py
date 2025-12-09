@@ -26,15 +26,12 @@ FORBIDDEN_WRITE_PATHS = [
 
 def _is_path_in_forbidden(resolved: Path, forbidden: str) -> bool:
     """Check if resolved path is inside a forbidden directory."""
-    forbidden_path = Path(forbidden)
-    if not forbidden_path.exists():
-        return False
-    forbidden_resolved = forbidden_path.resolve()
-    try:
-        resolved.relative_to(forbidden_resolved)
+    # Use string-based check to avoid race conditions with filesystem state
+    resolved_str = str(resolved)
+    # Ensure we match directory boundaries (e.g., /etc matches /etc/passwd but not /etcetera)
+    if resolved_str == forbidden or resolved_str.startswith(forbidden + "/"):
         return True
-    except ValueError:
-        return False
+    return False
 
 
 def _validate_write_path(path: Path) -> None:
@@ -46,9 +43,16 @@ def _validate_write_path(path: Path) -> None:
         if _is_path_in_forbidden(resolved, forbidden):
             raise ValueError(f"Cannot write to system directory: {forbidden}")
 
+    # Check if the target path itself is a symlink to a forbidden location
+    if path.exists() and path.is_symlink():
+        link_target = path.resolve()
+        for forbidden in FORBIDDEN_WRITE_PATHS:
+            if _is_path_in_forbidden(link_target, forbidden):
+                raise ValueError(f"Cannot write through symlink to system directory: {forbidden}")
+
     # Check if any parent is a symlink pointing to a forbidden location
     for parent in path.parents:
-        if parent.is_symlink():
+        if parent.exists() and parent.is_symlink():
             link_target = parent.resolve()
             for forbidden in FORBIDDEN_WRITE_PATHS:
                 if _is_path_in_forbidden(link_target, forbidden):
