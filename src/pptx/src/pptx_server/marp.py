@@ -23,6 +23,28 @@ MAX_MARKDOWN_SIZE = 10_000_000  # 10MB limit for markdown content
 MARP_TIMEOUT = 60  # Seconds timeout for marp-cli conversion
 FORBIDDEN_PATHS = frozenset(["/bin", "/sbin", "/usr", "/etc", "/sys", "/proc", "/var", "/root"])
 
+# Allowed Marp frontmatter keys (security: prevent injection of dangerous directives)
+# All keys are lowercase for case-insensitive comparison
+ALLOWED_FRONTMATTER_KEYS = frozenset(
+    [
+        "marp",
+        "theme",
+        "paginate",
+        "header",
+        "footer",
+        "class",
+        "size",
+        "title",
+        "author",
+        "description",
+        "keywords",
+        "url",
+        "image",
+        "headingdivider",  # Marp uses camelCase but we compare lowercase
+        "style",  # Style is controlled, not arbitrary CSS loading
+    ]
+)
+
 
 def _check_marp_cli() -> bool:
     """Check if marp-cli is available."""
@@ -82,6 +104,63 @@ def _validate_output_path(path: Path) -> None:
             raise ValueError(f"Permission denied: cannot create {path.parent}")
 
 
+def _sanitize_frontmatter(markdown_content: str) -> str:
+    """
+    Sanitize markdown frontmatter to prevent injection attacks.
+
+    Removes disallowed frontmatter keys that could be used for:
+    - Loading external resources (backgroundImage with url())
+    - Executing arbitrary code
+    - Overriding security-sensitive settings
+
+    Args:
+        markdown_content: Raw markdown content
+
+    Returns:
+        Sanitized markdown content
+    """
+    if not markdown_content.strip().startswith("---"):
+        return markdown_content
+
+    lines = markdown_content.split("\n")
+
+    # Find frontmatter boundaries
+    frontmatter_end = -1
+    for i, line in enumerate(lines[1:], 1):
+        if line.strip() == "---":
+            frontmatter_end = i
+            break
+
+    if frontmatter_end <= 0:
+        return markdown_content
+
+    # Filter frontmatter lines
+    sanitized_lines = [lines[0]]  # Keep opening ---
+    for line in lines[1:frontmatter_end]:
+        # Skip empty lines and comments
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            sanitized_lines.append(line)
+            continue
+
+        # Check if the key is allowed
+        if ":" in line:
+            key = line.split(":")[0].strip().lower()
+            if key in ALLOWED_FRONTMATTER_KEYS:
+                # Additional check: block backgroundImage with url()
+                if key in ("image", "style"):
+                    lower_line = line.lower()
+                    if "url(" in lower_line or "import" in lower_line:
+                        continue  # Skip lines with url() or @import
+                sanitized_lines.append(line)
+            # Silently drop disallowed keys
+
+    # Add remaining lines (closing --- and content)
+    sanitized_lines.extend(lines[frontmatter_end:])
+
+    return "\n".join(sanitized_lines)
+
+
 def convert_markdown_to_pptx(
     markdown_content: str,
     output_path: str,
@@ -101,6 +180,9 @@ def convert_markdown_to_pptx(
     # Validate inputs
     if len(markdown_content) > MAX_MARKDOWN_SIZE:
         raise ValueError(f"Markdown content too large (max {MAX_MARKDOWN_SIZE // 1_000_000}MB)")
+
+    # Sanitize frontmatter to prevent injection attacks
+    markdown_content = _sanitize_frontmatter(markdown_content)
 
     if theme not in THEMES:
         raise ValueError(f"Unknown theme: {theme}. Available: {list(THEMES.keys())}")
@@ -147,6 +229,12 @@ paginate: true
         md_path.write_text(markdown_content)
 
         # Run marp-cli
+        # Note: --allow-local-files is required to load our theme CSS from the temp directory.
+        # This is safe because:
+        # 1. The temp directory is isolated and created by us
+        # 2. We only write our controlled theme CSS file there
+        # 3. Markdown content is sanitized to remove dangerous frontmatter (backgroundImage, etc.)
+        # 4. The cwd is set to tmpdir, limiting file access scope
         cmd = [
             "npx",
             "@marp-team/marp-cli",

@@ -245,3 +245,113 @@ def test_marp_markdown_size_validation():
 
     with pytest.raises(ValueError, match="too large"):
         convert_markdown_to_pptx(huge_content, "/tmp/test.pptx")
+
+
+def test_marp_frontmatter_sanitization():
+    """Test that dangerous frontmatter keys are removed."""
+    from pptx_server.marp import _sanitize_frontmatter
+
+    # Test that backgroundImage with url() is removed
+    malicious_md = """---
+marp: true
+theme: minimal
+backgroundImage: url(https://evil.com/track.png)
+---
+
+# Safe Content
+"""
+    sanitized = _sanitize_frontmatter(malicious_md)
+    assert "backgroundImage" not in sanitized
+    assert "evil.com" not in sanitized
+    assert "marp: true" in sanitized
+    assert "theme: minimal" in sanitized
+
+    # Test that arbitrary keys are removed
+    injection_md = """---
+marp: true
+html: true
+script: console.log('xss')
+---
+
+# Content
+"""
+    sanitized = _sanitize_frontmatter(injection_md)
+    assert "html:" not in sanitized
+    assert "script:" not in sanitized
+    assert "marp: true" in sanitized
+
+
+def test_marp_frontmatter_allows_safe_keys():
+    """Test that safe frontmatter keys are preserved."""
+    from pptx_server.marp import _sanitize_frontmatter
+
+    safe_md = """---
+marp: true
+theme: noir
+paginate: true
+header: My Header
+footer: My Footer
+title: Presentation Title
+author: Test Author
+headingDivider: 2
+---
+
+# Content
+"""
+    sanitized = _sanitize_frontmatter(safe_md)
+    assert "marp: true" in sanitized
+    assert "theme: noir" in sanitized
+    assert "paginate: true" in sanitized
+    assert "header: My Header" in sanitized
+    assert "footer: My Footer" in sanitized
+    assert "title: Presentation Title" in sanitized
+    assert "author: Test Author" in sanitized
+    assert "headingDivider: 2" in sanitized
+
+
+def test_marp_frontmatter_blocks_url_in_style():
+    """Test that url() in style is blocked."""
+    from pptx_server.marp import _sanitize_frontmatter
+
+    style_injection = """---
+marp: true
+style: |
+  section { background-image: url(https://evil.com/track.png); }
+---
+
+# Content
+"""
+    sanitized = _sanitize_frontmatter(style_injection)
+    assert "url(" not in sanitized
+    assert "evil.com" not in sanitized
+
+
+def test_marp_frontmatter_blocks_import():
+    """Test that @import in style is blocked."""
+    from pptx_server.marp import _sanitize_frontmatter
+
+    import_injection = """---
+marp: true
+style: |
+  @import url('https://evil.com/malicious.css');
+---
+
+# Content
+"""
+    sanitized = _sanitize_frontmatter(import_injection)
+    assert "import" not in sanitized.lower() or "@import" not in sanitized
+
+
+def test_marp_no_frontmatter_passthrough():
+    """Test that markdown without frontmatter passes through unchanged."""
+    from pptx_server.marp import _sanitize_frontmatter
+
+    no_frontmatter = """# Simple Markdown
+
+No frontmatter here.
+
+- Item 1
+- Item 2
+"""
+    sanitized = _sanitize_frontmatter(no_frontmatter)
+    assert sanitized == no_frontmatter
