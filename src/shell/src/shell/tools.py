@@ -40,3 +40,7 @@ def shell(command: str, timeout: int = DEFAULT_TIMEOUT) -> str:
         return "\n\n".join(parts)
     except subprocess.TimeoutExpired:
         return f"Error: Command timed out after {timeout} seconds"
+    except subprocess.SubprocessError as e:
+        return f"Error: Subprocess failed: {e}"
+    except Exception as e:
+        return f"Error: {e}"

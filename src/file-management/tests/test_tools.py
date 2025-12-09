@@ -191,3 +191,23 @@ async def test_list_directory_not_found():
         res = await client.call_tool("list_directory", {"dir_path": "/nonexistent/dir"})
         assert "Error" in res.content[0].text
         assert "not found" in res.content[0].text.lower()
+
+
+@pytest.mark.asyncio
+async def test_write_file_symlink_to_forbidden():
+    """Test that symlinks to forbidden directories are blocked"""
+    async with Client(mcp) as client:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            # Create a symlink pointing to /etc
+            symlink_path = Path(tmpdir) / "malicious_link"
+            try:
+                symlink_path.symlink_to("/etc")
+            except OSError:
+                pytest.skip("Cannot create symlink (permission denied)")
+
+            res = await client.call_tool(
+                "write_file",
+                {"file_path": str(symlink_path / "test.txt"), "content": "test"},
+            )
+            assert "Error" in res.content[0].text
+            assert "system directory" in res.content[0].text.lower()
