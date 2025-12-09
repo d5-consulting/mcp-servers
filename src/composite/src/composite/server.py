@@ -1,30 +1,55 @@
 """MCP Composite Server - Aggregates multiple backend MCP servers into a single endpoint."""
 
+import importlib
 import os
+from pathlib import Path
 
-from browser import mcp as browser_mcp
-from docx import mcp as docx_mcp
+import yaml
 from dotenv import load_dotenv
 from fastmcp import FastMCP
-from langquery import mcp as langquery_mcp
-from pdf import mcp as pdf_mcp
-from pptx_server import mcp as pptx_mcp
-from vectorstore import mcp as vectorstore_mcp
-from xlsx import mcp as xlsx_mcp
 
 load_dotenv()
 
 mcp = FastMCP(os.getenv("NAME", "composite"))
 
-# Mount all backend MCP servers with prefixes
-# Tools will be available as: lang_*, xlsx_*, pdf_*, docx_*, pptx_*, vec_*, browser_*
-mcp.mount(langquery_mcp, prefix="lang")
-mcp.mount(xlsx_mcp, prefix="xlsx")
-mcp.mount(pdf_mcp, prefix="pdf")
-mcp.mount(docx_mcp, prefix="docx")
-mcp.mount(pptx_mcp, prefix="pptx")
-mcp.mount(vectorstore_mcp, prefix="vec")
-mcp.mount(browser_mcp, prefix="browser")
+
+def load_config() -> dict:
+    """Load server configuration from YAML file."""
+    config_path = os.getenv(
+        "COMPOSITE_CONFIG",
+        Path(__file__).parent.parent.parent / "composite-config.yaml",
+    )
+    config_path = Path(config_path)
+
+    if not config_path.exists():
+        return {"servers": {}}
+
+    with open(config_path) as f:
+        return yaml.safe_load(f) or {"servers": {}}
+
+
+def mount_servers():
+    """Mount enabled servers from configuration."""
+    config = load_config()
+    servers = config.get("servers", {})
+
+    for name, settings in servers.items():
+        if not settings.get("enabled", True):
+            continue
+
+        module_name = settings.get("module", name)
+        prefix = settings.get("prefix", name)
+
+        try:
+            module = importlib.import_module(module_name)
+            server_mcp = getattr(module, "mcp", None)
+            if server_mcp:
+                mcp.mount(server_mcp, prefix=prefix)
+        except ImportError as e:
+            print(f"Warning: Could not import {module_name}: {e}")
+
+
+mount_servers()
 
 
 def serve():

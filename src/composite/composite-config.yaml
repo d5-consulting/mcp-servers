@@ -1,0 +1,45 @@
+# composite server configuration
+# enable/disable servers by setting enabled: true/false
+
+servers:
+  langquery:
+    enabled: true
+    prefix: lang
+    module: langquery
+    description: data querying and shell commands
+
+  xlsx:
+    enabled: true
+    prefix: xlsx
+    module: xlsx
+    description: excel spreadsheet operations
+
+  pdf:
+    enabled: true
+    prefix: pdf
+    module: pdf
+    description: pdf document operations
+
+  docx:
+    enabled: true
+    prefix: docx
+    module: docx
+    description: word document operations
+
+  pptx:
+    enabled: true
+    prefix: pptx
+    module: pptx_server
+    description: powerpoint operations
+
+  vectorstore:
+    enabled: true
+    prefix: vec
+    module: vectorstore
+    description: vector database operations
+
+  browser:
+    enabled: true
+    prefix: browser
+    module: browser
+    description: browser automation

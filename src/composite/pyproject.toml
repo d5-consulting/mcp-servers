@@ -10,6 +10,7 @@ dependencies = [
     "langquery",
     "pdf",
     "pptx",
+    "pyyaml>=6.0",
     "starlette>=0.41.3",
     "vectorstore",
     "xlsx",

@@ -45,30 +45,39 @@ in dify mcp configuration:
 
 ## configuration
 
-environment variables:
+### environment variables
+
 - `NAME`: server name (default: "composite")
 - `TRANSPORT`: "stdio" or "sse" (default: "stdio")
 - `HOST`: server host for sse (default: "0.0.0.0")
 - `PORT`: server port for sse (default: 8000)
 - `ALLOW_ORIGIN`: cors origin (default: "*")
+- `COMPOSITE_CONFIG`: path to config file (default: `composite-config.yaml`)
 
-## adding servers
+### server configuration
 
-edit `src/composite/server.py` to mount additional servers:
+servers are configured via `composite-config.yaml`. enable/disable servers by setting `enabled: true/false`:
 
-```python
-from fastmcp import FastMCP
-from langquery import mcp as langquery_mcp
-from another_server import mcp as another_mcp
+```yaml
+servers:
+  langquery:
+    enabled: true
+    prefix: lang
+    module: langquery
+    description: data querying and shell commands
 
-mcp = FastMCP("composite")
-
-# mount servers with prefixes
-mcp.mount(langquery_mcp, prefix="lang")
-mcp.mount(another_mcp, prefix="another")
+  xlsx:
+    enabled: false  # disabled
+    prefix: xlsx
+    module: xlsx
+    description: excel spreadsheet operations
 ```
 
-tools will be available as `lang_*` and `another_*`.
+each server entry supports:
+- `enabled`: whether to mount the server (default: true)
+- `prefix`: tool name prefix (e.g., `lang_` for langquery tools)
+- `module`: python module name to import
+- `description`: server description
 
 ## mounted servers
 
@@ -94,5 +103,5 @@ uv run pytest -v
 ## development
 
 key files:
-- `src/composite/server.py`: main server with mount configuration
-- `composite-config.yaml`: optional backend configuration (for future use)
+- `src/composite/server.py`: main server with dynamic mount logic
+- `composite-config.yaml`: server configuration (enable/disable servers)
