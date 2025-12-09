@@ -7,3 +7,5 @@ assets/
 .ruff_cache/
 .venv/
 .claude/*.local.json
+workspace/
+src/composite/composite-config.yaml
