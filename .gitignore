@@ -8,3 +8,4 @@ assets/
 .venv/
 .claude/*.local.json
 workspace/
+chroma_data/
