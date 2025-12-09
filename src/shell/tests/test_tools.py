@@ -46,3 +46,11 @@ async def test_shell_exit_code_success():
         res = await client.call_tool("shell", {"command": "exit 0"})
         text = res.content[0].text
         assert "exit code**: 0" in text
+
+
+@pytest.mark.asyncio
+async def test_shell_timeout():
+    async with Client(mcp) as client:
+        res = await client.call_tool("shell", {"command": "sleep 5", "timeout": 1})
+        text = res.content[0].text
+        assert "timed out" in text.lower()

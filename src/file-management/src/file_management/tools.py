@@ -1,4 +1,5 @@
 import base64
+import binascii
 from pathlib import Path
 
 from . import mcp
@@ -9,20 +10,36 @@ FORBIDDEN_WRITE_PATHS = [
     "/usr/bin",
     "/usr/sbin",
     "/etc",
-    "/var",
+    "/boot",
+    "/dev",
+    "/proc",
+    "/sys",
+    "/root",
     "/System",
     "/Library",
+    # /var subdirectories (but not /var/folders or /var/tmp which are safe for temp files)
+    "/var/log",
+    "/var/db",
+    "/var/run",
 ]
 
 
 def _validate_write_path(path: Path) -> None:
     """Validate that the path is safe to write to."""
     resolved = path.resolve()
-    path_str = str(resolved)
 
     for forbidden in FORBIDDEN_WRITE_PATHS:
-        if path_str.startswith(forbidden):
+        forbidden_path = Path(forbidden)
+        if not forbidden_path.exists():
+            continue
+        forbidden_resolved = forbidden_path.resolve()
+        try:
+            resolved.relative_to(forbidden_resolved)
             raise ValueError(f"Cannot write to system directory: {forbidden}")
+        except ValueError as e:
+            if "Cannot write" in str(e):
+                raise
+            continue
 
 
 @mcp.tool()
@@ -81,7 +98,7 @@ def write_binary(file_path: str, content_base64: str) -> str:
         return f"Error: {e}"
     except PermissionError:
         return f"Error: Permission denied: {file_path}"
-    except base64.binascii.Error:
+    except binascii.Error:
         return "Error: Invalid base64 content"
     except Exception as e:
         return f"Error: {e}"
