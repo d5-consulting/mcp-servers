@@ -1,6 +1,7 @@
 """MCP Composite Server - Aggregates multiple backend MCP servers into a single endpoint."""
 
 import importlib
+import logging
 import os
 from pathlib import Path
 
@@ -9,6 +10,8 @@ from dotenv import load_dotenv
 from fastmcp import FastMCP
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 mcp = FastMCP(os.getenv("NAME", "composite"))
 
@@ -46,7 +49,7 @@ def mount_servers():
             if server_mcp:
                 mcp.mount(server_mcp, prefix=prefix)
         except ImportError as e:
-            print(f"Warning: Could not import {module_name}: {e}")
+            logger.warning("Could not import %s: %s", module_name, e)
 
 
 mount_servers()
