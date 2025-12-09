@@ -219,3 +219,5 @@ __marimo__/
 #   Note: Root CLAUDE.md is checked into version control.
 #   Only ignore local .claude/ directory for user-specific settings.
 .claude/
+
+composite-config.yaml
