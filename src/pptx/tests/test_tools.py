@@ -360,3 +360,44 @@ No frontmatter here.
 """
     sanitized = _sanitize_frontmatter(no_frontmatter)
     assert sanitized == no_frontmatter
+
+
+def test_marp_command_construction():
+    """Test that marp-cli command is constructed correctly (mocked)."""
+    from unittest.mock import MagicMock, patch
+
+    from pptx_server.marp import convert_markdown_to_pptx
+
+    markdown = """---
+marp: true
+---
+
+# Test Slide
+"""
+    mock_run = MagicMock()
+    mock_run.return_value.returncode = 0
+
+    with (
+        patch("pptx_server.marp.subprocess.run", mock_run),
+        patch("pathlib.Path.exists", return_value=True),
+    ):
+        try:
+            convert_markdown_to_pptx(markdown, "/tmp/test_output.pptx", "minimal")
+        except RuntimeError:
+            pass  # May fail if file doesn't exist after mock
+
+    # Verify subprocess.run was called
+    assert mock_run.called
+    call_args = mock_run.call_args
+
+    # Verify command structure
+    cmd = call_args[0][0]
+    assert "npx" in cmd
+    assert "@marp-team/marp-cli" in cmd
+    assert "--pptx" in cmd
+    assert "--theme" in cmd
+    assert "--allow-local-files" in cmd
+    assert "-o" in cmd
+
+    # Verify timeout was set
+    assert call_args[1].get("timeout") == 60
