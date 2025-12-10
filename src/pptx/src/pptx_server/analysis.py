@@ -409,15 +409,16 @@ def export_slide_as_image(
     if output_path:
         output_dir = Path(output_path).expanduser().resolve()
         # Validate output path is in a safe location (using is_relative_to for clarity)
-        # Note: /private/var is macOS symlink target for /var
         safe_prefixes = [
             Path.home(),
             Path("/tmp").resolve(),
             Path("/var/tmp").resolve(),
-            Path("/var/folders").resolve() if Path("/var/folders").exists() else Path("/var/folders"),
-            Path("/private/var/folders"),
-            Path("/private/tmp"),
         ]
+        # Add macOS temp directories if they exist
+        for macos_tmp in ["/var/folders", "/private/var/folders", "/private/tmp"]:
+            macos_path = Path(macos_tmp)
+            if macos_path.exists():
+                safe_prefixes.append(macos_path.resolve())
         if not any(output_dir == prefix or output_dir.is_relative_to(prefix) for prefix in safe_prefixes):
             return "Error: Output path must be within user home directory or /tmp"
     else:
@@ -452,9 +453,11 @@ After installation, try running this tool again."""
                 final_path = output_dir / final_name
                 _safe_rename(target_file, final_path)
 
-                # Clean up other slides (use index to avoid path comparison issues)
-                for i, img in enumerate(image_files):
-                    if i != slide_number - 1 and img.exists():
+                # Clean up other slides (compare against original target, not renamed path)
+                for img in image_files:
+                    # Skip the file we renamed (it no longer exists at original path)
+                    # and skip the final path (our output)
+                    if img != target_file and img.exists() and img != final_path:
                         try:
                             img.unlink()
                         except OSError:
