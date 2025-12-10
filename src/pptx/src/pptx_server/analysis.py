@@ -453,11 +453,10 @@ After installation, try running this tool again."""
                 final_path = output_dir / final_name
                 _safe_rename(target_file, final_path)
 
-                # Clean up other slides (compare against original target, not renamed path)
-                for img in image_files:
-                    # Skip the file we renamed (it no longer exists at original path)
-                    # and skip the final path (our output)
-                    if img != target_file and img.exists() and img != final_path:
+                # Clean up other slides (use index to avoid path comparison issues after rename)
+                target_index = slide_number - 1
+                for i, img in enumerate(image_files):
+                    if i != target_index and img.exists():
                         try:
                             img.unlink()
                         except OSError:
