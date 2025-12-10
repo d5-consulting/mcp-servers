@@ -1,5 +1,7 @@
 import os
+from functools import lru_cache
 
+from fastmcp.exceptions import ToolError
 from openai import OpenAI
 
 from . import mcp
@@ -7,11 +9,12 @@ from . import mcp
 DEFAULT_MODEL = "o3"
 
 
+@lru_cache(maxsize=1)
 def get_client() -> OpenAI:
-    """Get OpenAI client instance."""
+    """Get cached OpenAI client instance."""
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
-        raise ValueError("OPENAI_API_KEY environment variable is not set")
+        raise ToolError("OPENAI_API_KEY environment variable is not set")
     return OpenAI(api_key=api_key)
 
 
@@ -39,4 +42,4 @@ def o3_search(query: str) -> str:
         )
         return response.output_text
     except Exception as e:
-        return f"Error: {e}"
+        raise ToolError(f"OpenAI API error: {e}") from e
