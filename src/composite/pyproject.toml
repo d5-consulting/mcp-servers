@@ -6,11 +6,13 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "browser",
+    "dify",
     "docx",
     "file-management",
     "frontend-design",
     "langquery",
     "nano-banana",
+    "o3-search",
     "pdf",
     "pptx",
     "pyyaml>=6.0",
@@ -22,11 +24,13 @@ dependencies = [
 
 [tool.uv.sources]
 browser = { workspace = true }
+dify = { workspace = true }
 docx = { workspace = true }
 file-management = { workspace = true }
 frontend-design = { workspace = true }
 langquery = { workspace = true }
 nano-banana = { workspace = true }
+o3-search = { workspace = true }
 pdf = { workspace = true }
 pptx = { workspace = true }
 shell = { workspace = true }

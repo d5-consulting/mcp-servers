@@ -67,3 +67,15 @@ servers:
     prefix: img
     module: nano_banana
     description: AI image generation with Gemini Nano Banana
+
+  dify:
+    enabled: false
+    prefix: dify
+    module: dify
+    description: Dify workflow integration
+
+  o3-search:
+    enabled: true
+    prefix: o3
+    module: o3_search
+    description: O3 AI-powered web search
