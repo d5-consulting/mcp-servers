@@ -42,9 +42,11 @@ async def test_o3_search_api_error():
 
 def test_get_client_missing_api_key():
     """Test get_client raises error when API key is missing."""
+    from fastmcp.exceptions import ToolError
+
     get_client.cache_clear()
     with patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(Exception) as exc_info:
+        with pytest.raises(ToolError) as exc_info:
             get_client()
         assert "OPENAI_API_KEY" in str(exc_info.value)
     get_client.cache_clear()
