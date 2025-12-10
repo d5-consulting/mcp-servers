@@ -116,3 +116,81 @@ Replace `<server-name>` and `<module_name>` with the appropriate values from the
 | shell | `shell` | 8011 | Shell command execution |
 | vectorstore | `vectorstore` | 8002 | ChromaDB vector operations |
 | xlsx | `xlsx` | 8004 | Excel spreadsheet operations |
+
+## Migration Notes
+
+If upgrading from a previous version, note the following breaking changes:
+
+### Module Renames
+
+| Old Name | New Name | Reason |
+|----------|----------|--------|
+| `langquery` | `data-analysis` | Name was misleading - uses DuckDB, not LangChain |
+| `pptx` (module) | `pptx_mcp` | Avoids circular import with `python-pptx` library |
+
+### Update Claude Desktop Config
+
+If you were using these servers, update your `claude_desktop_config.json`:
+
+**data-analysis** (formerly langquery):
+```json
+{
+  "mcpServers": {
+    "data-analysis": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/src/data-analysis", "run", "python", "-m", "data_analysis"]
+    }
+  }
+}
+```
+
+**pptx**:
+```json
+{
+  "mcpServers": {
+    "pptx": {
+      "command": "uv",
+      "args": ["--directory", "/path/to/src/pptx", "run", "python", "-m", "pptx_mcp"]
+    }
+  }
+}
+```
+
+### Update docker-compose
+
+If using Docker, update service names and paths accordingly:
+- `langquery` service → `data-analysis`
+- Environment variables: `LANGQUERY_*` → `DATA_ANALYSIS_*`
+
+## Troubleshooting
+
+### Port Conflicts
+
+If you encounter port conflicts, check `DOCKER_PORTS.md` for the full port assignment list. Each server has a unique default port. You can override with:
+
+```bash
+# CLI
+uv run python -m <module> --port 9000
+
+# Environment variable
+PORT=9000 uv run python -m <module>
+
+# docker-compose.yml
+services:
+  server:
+    environment:
+      - PORT=9000
+    ports:
+      - "9000:9000"
+```
+
+### Import Errors
+
+If you see circular import errors with pptx, ensure you're using the correct module name:
+```bash
+# Correct
+uv run python -m pptx_mcp
+
+# Wrong (conflicts with python-pptx library)
+uv run python -m pptx
+```

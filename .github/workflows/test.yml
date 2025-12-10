@@ -32,6 +32,7 @@ jobs:
         server:
           - browser
           - composite
+          - core
           - dify
           - docx
           - file-management

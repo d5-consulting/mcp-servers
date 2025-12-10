@@ -74,3 +74,7 @@ uv run python -m pptx_mcp
 ```
 
 See [server guide](../../docs/server-guide.md) for common CLI options.
+
+## Module Naming
+
+The module is named `pptx_mcp` (not `pptx`) to avoid a circular import conflict with the `python-pptx` library. When Python imports `from pptx import Presentation`, it needs to find the library, not our module.
