@@ -12,6 +12,9 @@ dependencies = [
     "openai>=1.0.0",
 ]
 
+[project.scripts]
+o3-search = "o3_search.server:serve"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/o3_search"]
 

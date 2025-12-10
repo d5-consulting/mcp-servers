@@ -17,7 +17,7 @@ A thin MCP wrapper around OpenAI's o3 model with web search capabilities for dee
 An AI agent with advanced web search capabilities.
 
 **Parameters:**
-- `input` (required): Ask questions, search for information, or consult about complex problems in English.
+- `query` (required): Ask questions, search for information, or consult about complex problems in English.
 
 **Returns:** Response from o3 with web search results and analysis.
 
@@ -46,13 +46,19 @@ Optional environment variables:
 Run as a Python module (from repo root):
 
 ```bash
-uv run python -m o3_search.server
+uv run python -m o3_search
+```
+
+Or with console script:
+
+```bash
+uv run o3-search
 ```
 
 Or with SSE transport:
 
 ```bash
-TRANSPORT=sse PORT=8012 uv run python -m o3_search.server
+TRANSPORT=sse PORT=8012 uv run python -m o3_search
 ```
 
 ## Testing

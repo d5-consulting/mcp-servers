@@ -15,15 +15,15 @@ def get_client() -> OpenAI:
     return OpenAI(api_key=api_key)
 
 
-@mcp.tool()
-def o3_search(input: str) -> str:
+@mcp.tool(name="o3-search")
+def o3_search(query: str) -> str:
     """
     An AI agent with advanced web search capabilities.
     Useful for finding the latest information, troubleshooting errors, and discussing ideas or design challenges.
     Supports natural language queries.
 
     Args:
-        input: Ask questions, search for information, or consult about complex problems in English.
+        query: Ask questions, search for information, or consult about complex problems in English.
 
     Returns:
         Response from o3 with web search results and analysis.
@@ -35,7 +35,7 @@ def o3_search(input: str) -> str:
         response = client.responses.create(
             model=model,
             tools=[{"type": "web_search_preview"}],
-            input=input,
+            input=query,
         )
         return response.output_text
     except Exception as e:
