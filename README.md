@@ -17,7 +17,7 @@ This monorepo contains multiple MCP servers built with [FastMCP](https://github.
 | [docx](src/docx) | 8005 | Word document operations |
 | [file-management](src/file-management) | 8010 | File read/write operations |
 | [frontend-design](src/frontend-design) | 8009 | Design themes and color palettes |
-| [nano-banana](src/nano-banana) | 8010 | AI image generation with Google Gemini |
+| [nano-banana](src/nano-banana) | 8013 | AI image generation with Google Gemini |
 | [o3-search](src/o3-search) | 8012 | Deep research with OpenAI o3 |
 | [pdf](src/pdf) | 8008 | PDF extraction and manipulation |
 | [pptx](src/pptx) | 8003 | PowerPoint operations |
