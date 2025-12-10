@@ -246,6 +246,55 @@ async def test_export_slide_subprocess_failure(sample_pptx, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_export_slide_as_image_success(sample_pptx, monkeypatch, tmp_path):
+    """Test successful export with mocked LibreOffice."""
+    from unittest.mock import MagicMock
+
+    # Mock successful conversion
+    mock_result = MagicMock()
+    mock_result.returncode = 0
+
+    def side_effect(*args, **kwargs):
+        # Create fake output file in the temp directory used by the function
+        # The function uses tempfile.TemporaryDirectory internally,
+        # so we need to create the file in the temp dir passed to subprocess
+        cmd = args[0]
+        outdir = cmd[cmd.index("--outdir") + 1]
+        (Path(outdir) / "test.png").touch()
+        return mock_result
+
+    mock_run = MagicMock(side_effect=side_effect)
+    monkeypatch.setattr("pptx_server.analysis.subprocess.run", mock_run)
+    monkeypatch.setattr("pptx_server.analysis._find_libreoffice", lambda: "/usr/bin/libreoffice")
+
+    async with Client(mcp) as client:
+        res = await client.call_tool(
+            "export_slide_as_image",
+            {"file_path": str(sample_pptx), "output_path": str(tmp_path)},
+        )
+        text = res.content[0].text
+        assert "Exported" in text
+        assert "Error" not in text
+
+
+@pytest.mark.asyncio
+async def test_export_slide_empty_presentation(temp_pptx, monkeypatch):
+    """Test error handling for empty presentation."""
+    # Create an empty presentation (no slides)
+    prs = Presentation()
+    prs.save(str(temp_pptx))
+
+    async with Client(mcp) as client:
+        res = await client.call_tool(
+            "export_slide_as_image",
+            {"file_path": str(temp_pptx)},
+        )
+        text = res.content[0].text
+        assert "Error" in text
+        assert "no slides" in text.lower()
+
+
+@pytest.mark.asyncio
 async def test_extract_text_invalid_slide_numbers(sample_pptx):
     """Test error handling for invalid slide numbers."""
     async with Client(mcp) as client:

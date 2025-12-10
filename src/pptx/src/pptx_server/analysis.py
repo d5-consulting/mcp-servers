@@ -6,6 +6,7 @@ without modification.
 """
 
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -15,9 +16,12 @@ from pptx import Presentation
 
 from . import mcp
 
+# Timeout for LibreOffice conversion (in seconds)
+LIBREOFFICE_TIMEOUT_SECONDS = 120
+
 
 def _find_libreoffice() -> str | None:
-    """Find LibreOffice executable path."""
+    """Find and validate LibreOffice executable path."""
     # Check common locations
     candidates = [
         "libreoffice",
@@ -28,12 +32,16 @@ def _find_libreoffice() -> str | None:
     ]
 
     for candidate in candidates:
-        if shutil.which(candidate):
-            return candidate
+        resolved = shutil.which(candidate)
+        if resolved:
+            # Validate it's an executable file
+            path_obj = Path(resolved)
+            if path_obj.is_file() and os.access(path_obj, os.X_OK):
+                return resolved
 
     # Check macOS application path directly
     macos_path = Path("/Applications/LibreOffice.app/Contents/MacOS/soffice")
-    if macos_path.exists():
+    if macos_path.exists() and macos_path.is_file() and os.access(macos_path, os.X_OK):
         return str(macos_path)
 
     return None
@@ -66,7 +74,7 @@ def _convert_pptx_to_images(pptx_path: Path, output_dir: Path, libreoffice_path:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=120,  # 2 minute timeout
+                timeout=LIBREOFFICE_TIMEOUT_SECONDS,
             )
 
             if result.returncode != 0:
@@ -96,7 +104,7 @@ def _convert_pptx_to_images(pptx_path: Path, output_dir: Path, libreoffice_path:
             return output_files
 
         except subprocess.TimeoutExpired:
-            raise RuntimeError("LibreOffice conversion timed out after 120 seconds")
+            raise RuntimeError(f"LibreOffice conversion timed out after {LIBREOFFICE_TIMEOUT_SECONDS} seconds")
 
 
 @mcp.tool()
@@ -342,6 +350,15 @@ Alternatively, use the export_slide_as_image tool for automatic conversion.
 """
 
 
+def _safe_rename(src: Path, dst: Path) -> None:
+    """Safely rename a file, handling existing destination."""
+    try:
+        src.rename(dst)
+    except FileExistsError:
+        dst.unlink()
+        src.rename(dst)
+
+
 @mcp.tool()
 def export_slide_as_image(
     file_path: str,
@@ -352,6 +369,9 @@ def export_slide_as_image(
     Export a slide (or all slides) from a PowerPoint presentation as PNG image(s).
 
     Requires LibreOffice to be installed on the system.
+
+    Note: Even when requesting a single slide, LibreOffice converts all slides
+    internally. Unwanted slides are automatically cleaned up after conversion.
 
     Args:
         file_path: Path to the PowerPoint file
@@ -366,10 +386,14 @@ def export_slide_as_image(
     if not path.exists():
         return f"Error: File not found: {path}"
 
-    # Validate slide number if provided
+    # Validate slide count
     prs = Presentation(str(path))
     total_slides = len(prs.slides)
 
+    if total_slides == 0:
+        return "Error: Presentation has no slides to export"
+
+    # Validate slide number if provided
     if slide_number is not None:
         if slide_number < 1 or slide_number > total_slides:
             return f"Error: Slide {slide_number} does not exist. Presentation has {total_slides} slides."
@@ -405,7 +429,7 @@ After installation, try running this tool again."""
                 # Rename to include original filename
                 final_name = f"{path.stem}_slide_{slide_number}.png"
                 final_path = output_dir / final_name
-                target_file.rename(final_path)
+                _safe_rename(target_file, final_path)
 
                 # Clean up other slides (use index to avoid path comparison issues)
                 for i, img in enumerate(image_files):
@@ -422,12 +446,12 @@ After installation, try running this tool again."""
                 final_name = f"{path.stem}_slide_{i}.png"
                 final_path = output_dir / final_name
                 if img.exists():
-                    img.rename(final_path)
+                    _safe_rename(img, final_path)
                     renamed_files.append(str(final_path))
 
             return f"Exported {len(renamed_files)} slides to:\n" + "\n".join(renamed_files)
 
-    except RuntimeError as e:
+    except (RuntimeError, subprocess.SubprocessError) as e:
         return f"Error during conversion: {e}"
     except Exception as e:
-        return f"Unexpected error: {e}"
+        return f"Unexpected error: {type(e).__name__}: {e}"
