@@ -143,6 +143,65 @@ async def test_get_slide_export_instructions(sample_pptx):
         assert "slide 1" in text.lower()
 
 
+# ======================================================
+# Export Slide as Image Tests
+# ======================================================
+
+
+@pytest.mark.asyncio
+async def test_export_slide_as_image_file_not_found():
+    """Test error handling for missing file."""
+    async with Client(mcp) as client:
+        res = await client.call_tool(
+            "export_slide_as_image",
+            {"file_path": "/nonexistent/file.pptx"},
+        )
+        text = res.content[0].text
+        assert "Error" in text
+        assert "not found" in text
+
+
+@pytest.mark.asyncio
+async def test_export_slide_as_image_invalid_slide(sample_pptx):
+    """Test error handling for invalid slide number."""
+    async with Client(mcp) as client:
+        res = await client.call_tool(
+            "export_slide_as_image",
+            {"file_path": str(sample_pptx), "slide_number": 999},
+        )
+        text = res.content[0].text
+        assert "Error" in text
+        assert "does not exist" in text
+
+
+def test_find_libreoffice():
+    """Test LibreOffice detection function."""
+    from pptx_server.analysis import _find_libreoffice
+
+    # This test just verifies the function runs without error
+    # The result depends on whether LibreOffice is installed
+    result = _find_libreoffice()
+    # Result is either a path string or None
+    assert result is None or isinstance(result, str)
+
+
+@pytest.mark.asyncio
+async def test_export_slide_as_image_no_libreoffice(sample_pptx, monkeypatch):
+    """Test error message when LibreOffice is not available."""
+    # Mock _find_libreoffice to return None
+    monkeypatch.setattr("pptx_server.analysis._find_libreoffice", lambda: None)
+
+    async with Client(mcp) as client:
+        res = await client.call_tool(
+            "export_slide_as_image",
+            {"file_path": str(sample_pptx)},
+        )
+        text = res.content[0].text
+        assert "Error" in text
+        assert "LibreOffice is not installed" in text
+        assert "install" in text.lower()
+
+
 @pytest.mark.asyncio
 async def test_extract_text_invalid_slide_numbers(sample_pptx):
     """Test error handling for invalid slide numbers."""
