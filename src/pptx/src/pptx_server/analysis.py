@@ -352,11 +352,18 @@ Alternatively, use the export_slide_as_image tool for automatic conversion.
 
 
 def _safe_rename(src: Path, dst: Path) -> None:
-    """Safely rename a file, handling existing destination.
+    """Safely rename a file, overwriting destination if it exists.
 
     Uses Path.replace() which is atomic on POSIX systems.
+    On Windows, this is not guaranteed to be atomic.
+
+    Raises:
+        OSError: If rename fails due to permissions or other I/O errors.
     """
-    src.replace(dst)
+    try:
+        src.replace(dst)
+    except OSError as e:
+        raise OSError(f"Failed to rename {src} to {dst}: {e}") from e
 
 
 @mcp.tool()
@@ -401,17 +408,17 @@ def export_slide_as_image(
     # Determine and validate output directory (validate before LibreOffice check for early error)
     if output_path:
         output_dir = Path(output_path).expanduser().resolve()
-        # Validate output path is in a safe location
+        # Validate output path is in a safe location (using is_relative_to for clarity)
         # Note: /private/var is macOS symlink target for /var
         safe_prefixes = [
             Path.home(),
-            Path("/tmp"),
-            Path("/var/tmp"),
-            Path("/var/folders"),
+            Path("/tmp").resolve(),
+            Path("/var/tmp").resolve(),
+            Path("/var/folders").resolve() if Path("/var/folders").exists() else Path("/var/folders"),
             Path("/private/var/folders"),
             Path("/private/tmp"),
         ]
-        if not any(output_dir == prefix or prefix in output_dir.parents for prefix in safe_prefixes):
+        if not any(output_dir == prefix or output_dir.is_relative_to(prefix) for prefix in safe_prefixes):
             return "Error: Output path must be within user home directory or /tmp"
     else:
         output_dir = path.parent
@@ -448,7 +455,10 @@ After installation, try running this tool again."""
                 # Clean up other slides (use index to avoid path comparison issues)
                 for i, img in enumerate(image_files):
                     if i != slide_number - 1 and img.exists():
-                        img.unlink()
+                        try:
+                            img.unlink()
+                        except OSError:
+                            pass  # Best effort cleanup, continue even if some files fail
 
                 return f"Exported slide {slide_number} to: {final_path}"
             else:
