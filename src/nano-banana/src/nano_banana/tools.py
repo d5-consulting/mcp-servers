@@ -35,12 +35,11 @@ FORBIDDEN_PATHS = frozenset(
     ]
 )
 
-# Model configuration
+# Model configuration (model IDs as of Dec 2025, may change)
 MODELS = {
     "flash": "gemini-2.5-flash-image",
     "pro": "gemini-3-pro-image-preview",
 }
-DEFAULT_MODEL = "flash"
 
 # Asset-specific prompt templates
 ASSET_PROMPTS = {
@@ -78,10 +77,12 @@ def _get_client() -> genai.Client:
 def _validate_output_path(path: Path) -> None:
     """Validate output path is safe to write to.
 
+    Resolves the path internally to prevent path traversal attacks.
+
     Args:
-        path: Path to validate (must already be resolved via expanduser().resolve())
+        path: Path to validate (will be resolved internally)
     """
-    # Path must be resolved before calling this function to prevent traversal attacks
+    # Resolve path to prevent traversal attacks like /tmp/../etc/passwd
     resolved_path = str(path.resolve())
 
     if path.suffix.lower() not in ALLOWED_EXTENSIONS:
@@ -293,6 +294,9 @@ def _image_to_base64_impl(image_path: str) -> str:
 
         if path.suffix.lower() not in ALLOWED_EXTENSIONS:
             return f"Error: Unsupported image format: {path.suffix}"
+
+        if path.stat().st_size > MAX_IMAGE_SIZE:
+            return f"Error: Image file too large (max {MAX_IMAGE_SIZE // 1_000_000}MB)"
 
         mime_types = {
             ".png": "image/png",
