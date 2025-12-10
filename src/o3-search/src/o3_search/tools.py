@@ -15,7 +15,7 @@ def get_client() -> OpenAI:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise ToolError("OPENAI_API_KEY environment variable is not set")
-    return OpenAI(api_key=api_key)
+    return OpenAI(api_key=api_key.strip())
 
 
 @mcp.tool(name="o3-search")
