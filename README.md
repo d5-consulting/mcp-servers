@@ -14,9 +14,12 @@ This monorepo contains multiple MCP servers built with [FastMCP](https://github.
 | [composite](src/composite) | Combines multiple MCP servers into a single unified server |
 | [dify](src/dify) | AI agent building, workflow management, and knowledge base operations |
 | [docx](src/docx) | Word document (.docx) creation, editing, and analysis |
+| [file-management](src/file-management) | File read/write operations for large content that exceeds shell limits |
+| [frontend-design](src/frontend-design) | Design principles, themes, and color palettes for presentations and documents |
 | [langquery](src/langquery) | Natural language querying and processing with LangChain |
 | [pdf](src/pdf) | PDF document creation, manipulation, and extraction |
 | [pptx](src/pptx) | PowerPoint presentation (.pptx) creation and editing |
+| [shell](src/shell) | Shell command execution with stdout/stderr capture |
 | [vectorstore](src/vectorstore) | Vector database operations for semantic search |
 | [xlsx](src/xlsx) | Excel spreadsheet (.xlsx) creation, editing, and analysis |
 
