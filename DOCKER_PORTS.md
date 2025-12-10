@@ -36,6 +36,14 @@ uv run python -m <server> --help
 | `--port`         | `PORT`              | Server-specific | Port to listen on            |
 | `--allow-origin` | `ALLOW_ORIGIN`      | `*`       | CORS allowed origin               |
 
+### Security Note
+
+The default `--allow-origin=*` permits requests from any origin, which is convenient for development but **not recommended for production**. For production deployments, specify your domain:
+
+```bash
+uv run python -m xlsx --transport sse --allow-origin "https://yourdomain.com"
+```
+
 ### Examples
 
 ```bash

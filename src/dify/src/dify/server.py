@@ -77,7 +77,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def serve():
+def serve() -> None:
     """Start MCP server."""
     args = parse_args()
 
