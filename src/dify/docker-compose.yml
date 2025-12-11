@@ -4,12 +4,12 @@ services:
       context: ../..
       dockerfile: src/dify/Dockerfile
     ports:
-      - "8008:8008"
+      - "8003:8003"
     volumes:
       - ./workspace:/workspace
       - ./src:/app/src/dify/src
     environment:
       - TRANSPORT=sse
-      - PORT=8008
+      - PORT=8003
       - DIFY_API_KEY=${DIFY_API_KEY}
       - DIFY_CONSOLE_API_KEY=${DIFY_CONSOLE_API_KEY}

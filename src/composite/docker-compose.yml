@@ -34,7 +34,7 @@ services:
     environment:
       - TRANSPORT=sse
       - HOST=0.0.0.0
-      - PORT=8007
+      - PORT=8001
       - BROWSER_TIMEOUT=${BROWSER_TIMEOUT:-30000}
       - NAVIGATION_TIMEOUT=${NAVIGATION_TIMEOUT:-60000}
     networks:
@@ -48,7 +48,7 @@ services:
     environment:
       - TRANSPORT=sse
       - HOST=0.0.0.0
-      - PORT=8001
+      - PORT=8003
       - DIFY_API_KEY=${DIFY_API_KEY}
       - DIFY_BASE_URL=${DIFY_BASE_URL:-https://api.dify.ai/v1}
       - DIFY_CONSOLE_API_KEY=${DIFY_CONSOLE_API_KEY}
@@ -64,7 +64,7 @@ services:
     environment:
       - TRANSPORT=sse
       - HOST=0.0.0.0
-      - PORT=8008
+      - PORT=8009
     networks:
       - mcp-network
 
@@ -76,7 +76,7 @@ services:
     environment:
       - TRANSPORT=sse
       - HOST=0.0.0.0
-      - PORT=8004
+      - PORT=8013
     networks:
       - mcp-network
 
@@ -88,7 +88,7 @@ services:
     environment:
       - TRANSPORT=sse
       - HOST=0.0.0.0
-      - PORT=8005
+      - PORT=8004
     networks:
       - mcp-network
 
@@ -100,7 +100,7 @@ services:
     environment:
       - TRANSPORT=sse
       - HOST=0.0.0.0
-      - PORT=8003
+      - PORT=8010
     networks:
       - mcp-network
 
@@ -112,7 +112,7 @@ services:
     environment:
       - TRANSPORT=sse
       - HOST=0.0.0.0
-      - PORT=8002
+      - PORT=8012
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     networks:
       - mcp-network
@@ -125,7 +125,7 @@ services:
     environment:
       - TRANSPORT=sse
       - HOST=0.0.0.0
-      - PORT=8006
+      - PORT=8002
     networks:
       - mcp-network
 

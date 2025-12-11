@@ -18,7 +18,7 @@ from .tools import (
     upload_document_by_text,
 )
 
-DEFAULT_PORT = 8008
+DEFAULT_PORT = 8003
 
 
 @asynccontextmanager
