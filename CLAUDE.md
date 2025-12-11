@@ -134,6 +134,20 @@ Default ports are assigned alphabetically, with composite reserved at 8000:
 
 When adding a new server, assign the next available port after the last alphabetically-sorted server. See `docs/server-guide.md` for the current port assignments.
 
+### Consistency Rules
+
+When modifying MCP servers, ensure these files stay in sync:
+
+| File | What to update |
+|------|----------------|
+| `src/<server>/src/<module>/server.py` | `DEFAULT_PORT` constant |
+| `src/<server>/docker-compose.yml` | `ports` mapping and `PORT` env var |
+| `src/composite/docker-compose.yml` | Backend service definition and `PORT` env var |
+| `src/composite/composite-config.yaml` | Server entry with `enabled`, `prefix`, `module` |
+| `docs/server-guide.md` | Server Reference table |
+
+When adding a new server, update all of these. When changing ports, update all of these.
+
 ### Dependency Management
 
 This repository uses a **Google-style monorepo** with `uv` workspaces for unified dependency management:
