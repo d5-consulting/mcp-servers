@@ -121,9 +121,14 @@ async def health(request: Request) -> PlainTextResponse:
 
 async def livereload_websocket(websocket: WebSocket) -> None:
     """WebSocket endpoint for live reload."""
-    await websocket.accept()
     store = get_store()
-    store.register_client(websocket)
+
+    # Check connection limit before accepting
+    if not store.register_client(websocket):
+        await websocket.close(code=1013, reason="Too many connections")
+        return
+
+    await websocket.accept()
 
     try:
         while True:

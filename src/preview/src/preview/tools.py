@@ -76,7 +76,16 @@ def serve_file(
     Returns:
         URL where the page is served
     """
-    file_path = Path(path).expanduser()
+    file_path = Path(path).expanduser().resolve()
+
+    # Path traversal protection: ensure the resolved path doesn't escape
+    # to unexpected locations via symlinks or ../ sequences
+    try:
+        file_path.relative_to(Path.cwd())
+    except ValueError:
+        # Path is outside cwd, check if it's an absolute path that was intentional
+        if not Path(path).is_absolute():
+            return f"Error: Path traversal detected: {path}"
 
     if not file_path.exists():
         return f"Error: File not found: {path}"
@@ -416,11 +425,16 @@ def get_server_status() -> str:
 # Browser integration tools (optional, require playwright)
 
 
+# Default timeout for playwright operations (30 seconds)
+PLAYWRIGHT_TIMEOUT = 30000
+
+
 @mcp.tool()
 async def screenshot_page(
     name: str,
     filename: str | None = None,
     full_page: bool = True,
+    timeout: int = PLAYWRIGHT_TIMEOUT,
 ) -> str:
     """Take a screenshot of a served page.
 
@@ -430,6 +444,7 @@ async def screenshot_page(
         name: Page name to screenshot
         filename: Output filename (default: {name}.png)
         full_page: Capture full scrollable page
+        timeout: Timeout in milliseconds (default: 30000)
 
     Returns:
         Path to saved screenshot
@@ -441,7 +456,7 @@ async def screenshot_page(
         return f"Error: Page '{name}' not found."
 
     try:
-        from playwright.async_api import async_playwright
+        from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
     except ImportError:
         return "Error: playwright not installed. Run: pip install playwright && playwright install chromium"
 
@@ -455,12 +470,18 @@ async def screenshot_page(
     os.makedirs(workspace, exist_ok=True)
     filepath = os.path.join(workspace, filename)
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        browser_page = await browser.new_page()
-        await browser_page.goto(url)
-        await browser_page.screenshot(path=filepath, full_page=full_page)
-        await browser.close()
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            browser_page = await browser.new_page()
+            browser_page.set_default_timeout(timeout)
+            await browser_page.goto(url, wait_until="networkidle")
+            await browser_page.screenshot(path=filepath, full_page=full_page)
+            await browser.close()
+    except PlaywrightTimeout:
+        return f"Error: Timeout after {timeout}ms while capturing screenshot"
+    except Exception as e:
+        return f"Error: Failed to capture screenshot: {e}"
 
     return f"Screenshot saved to {filepath}"
 
@@ -469,6 +490,7 @@ async def screenshot_page(
 async def export_pdf(
     name: str,
     filename: str | None = None,
+    timeout: int = PLAYWRIGHT_TIMEOUT,
 ) -> str:
     """Export a served page as PDF.
 
@@ -477,6 +499,7 @@ async def export_pdf(
     Args:
         name: Page name to export
         filename: Output filename (default: {name}.pdf)
+        timeout: Timeout in milliseconds (default: 30000)
 
     Returns:
         Path to saved PDF
@@ -488,7 +511,7 @@ async def export_pdf(
         return f"Error: Page '{name}' not found."
 
     try:
-        from playwright.async_api import async_playwright
+        from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
     except ImportError:
         return "Error: playwright not installed. Run: pip install playwright && playwright install chromium"
 
@@ -502,11 +525,17 @@ async def export_pdf(
     os.makedirs(workspace, exist_ok=True)
     filepath = os.path.join(workspace, filename)
 
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        browser_page = await browser.new_page()
-        await browser_page.goto(url)
-        await browser_page.pdf(path=filepath)
-        await browser.close()
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch()
+            browser_page = await browser.new_page()
+            browser_page.set_default_timeout(timeout)
+            await browser_page.goto(url, wait_until="networkidle")
+            await browser_page.pdf(path=filepath)
+            await browser.close()
+    except PlaywrightTimeout:
+        return f"Error: Timeout after {timeout}ms while exporting PDF"
+    except Exception as e:
+        return f"Error: Failed to export PDF: {e}"
 
     return f"PDF saved to {filepath}"

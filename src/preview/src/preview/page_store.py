@@ -6,6 +6,9 @@ from datetime import datetime
 
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
+# Maximum number of concurrent WebSocket connections
+MAX_WEBSOCKET_CLIENTS = 100
+
 
 @dataclass
 class Page:
@@ -99,10 +102,16 @@ class PageStore:
         with self._lock:
             return len(self._pages)
 
-    def register_client(self, websocket: WebSocket) -> None:
-        """Register a WebSocket client for live reload."""
+    def register_client(self, websocket: WebSocket) -> bool:
+        """Register a WebSocket client for live reload.
+
+        Returns True if registered, False if limit reached.
+        """
         with self._lock:
+            if len(self._websocket_clients) >= MAX_WEBSOCKET_CLIENTS:
+                return False
             self._websocket_clients.add(websocket)
+            return True
 
     def unregister_client(self, websocket: WebSocket) -> None:
         """Unregister a WebSocket client."""
