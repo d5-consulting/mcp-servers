@@ -170,6 +170,10 @@ This server is designed for local development and trusted environments:
 - **Only serve trusted content**: Do not serve user-generated or untrusted HTML
 - **Local use only**: Do not expose the HTTP server to untrusted networks
 - **Authentication**: No built-in authentication - consider a reverse proxy for multi-user environments
+- **File access via serve_file**:
+  - Absolute paths (e.g., `/path/to/file.html`) are allowed without restriction
+  - Relative paths are restricted to the current working directory
+  - Path traversal via `../` in relative paths is blocked
 
 ## Architecture
 
