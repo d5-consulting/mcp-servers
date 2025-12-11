@@ -96,6 +96,10 @@ uv run ruff format
 
 Run these commands from the repository root to check the entire codebase.
 
+### Skills Reference
+
+For Claude Code skills examples, see [anthropic/skills](https://github.com/anthropics/skills)
+
 ### Documentation Standards
 
 Each MCP server must have a README.md with:
@@ -124,6 +128,29 @@ When adding a new MCP server to the workspace:
 4. If the server should be available in composite, add it to:
    - `src/composite/pyproject.toml` dependencies and `[tool.uv.sources]`
    - `src/composite/composite-config.yaml` with appropriate settings
+
+### Port Assignment
+
+Default ports are assigned alphabetically, with composite reserved at 8000:
+
+- **composite**: 8000 (reserved for the aggregator server)
+- **Other servers**: 8001-8013, assigned alphabetically by server name
+
+When adding a new server, assign the next available port after the last alphabetically-sorted server. See `docs/server-guide.md` for the current port assignments.
+
+### Consistency Rules
+
+When modifying MCP servers, ensure these files stay in sync:
+
+| File | What to update |
+|------|----------------|
+| `src/<server>/src/<module>/server.py` | `DEFAULT_PORT` constant |
+| `src/<server>/docker-compose.yml` | `ports` mapping and `PORT` env var |
+| `src/composite/docker-compose.yml` | Backend service definition and `PORT` env var |
+| `src/composite/composite-config.yaml` | Server entry with `enabled`, `prefix`, `module` |
+| `docs/server-guide.md` | Server Reference table |
+
+When adding a new server, update all of these. When changing ports, update all of these.
 
 ### Dependency Management
 

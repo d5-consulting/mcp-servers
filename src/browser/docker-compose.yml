@@ -4,10 +4,10 @@ services:
       context: ../..
       dockerfile: src/browser/Dockerfile
     ports:
-      - "8007:8007"
+      - "8001:8001"
     volumes:
       - ./workspace:/workspace
       - ./src:/app/src/browser/src
     environment:
       - TRANSPORT=sse
-      - PORT=8007
+      - PORT=8001

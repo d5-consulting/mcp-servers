@@ -4,9 +4,9 @@ services:
       context: ../..
       dockerfile: src/file-management/Dockerfile
     ports:
-      - "8010:8010"
+      - "8005:8005"
     volumes:
       - ./workspace:/workspace
     environment:
       - TRANSPORT=sse
-      - PORT=8010
+      - PORT=8005
