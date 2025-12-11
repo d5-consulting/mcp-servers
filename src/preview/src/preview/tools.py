@@ -68,8 +68,13 @@ def serve_file(
 ) -> str:
     """Serve a file from disk.
 
+    Security note:
+        - Absolute paths are allowed (e.g., /path/to/file.html)
+        - Relative paths must resolve within the current working directory
+        - Path traversal via ../ in relative paths is blocked
+
     Args:
-        path: Path to the HTML file
+        path: Path to the HTML file (absolute or relative to cwd)
         name: Page name for URL (default: filename without extension)
         open_browser: Open the page in default browser
 
@@ -78,13 +83,12 @@ def serve_file(
     """
     file_path = Path(path).expanduser().resolve()
 
-    # Path traversal protection: ensure the resolved path doesn't escape
-    # to unexpected locations via symlinks or ../ sequences
-    try:
-        file_path.relative_to(Path.cwd())
-    except ValueError:
-        # Path is outside cwd, check if it's an absolute path that was intentional
-        if not Path(path).is_absolute():
+    # Path traversal protection for relative paths only
+    # Absolute paths are allowed since users explicitly specify them
+    if not Path(path).is_absolute():
+        try:
+            file_path.relative_to(Path.cwd())
+        except ValueError:
             return f"Error: Path traversal detected: {path}"
 
     if not file_path.exists():
