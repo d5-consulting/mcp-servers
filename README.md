@@ -10,8 +10,8 @@ This monorepo contains multiple MCP servers built with [FastMCP](https://github.
 
 | Server | Port | Description |
 |--------|------|-------------|
-| [browser](src/browser) | 8001 | Browser automation using Playwright |
 | [composite](src/composite) | 8000 | Combines multiple MCP servers into one |
+| [browser](src/browser) | 8001 | Browser automation using Playwright |
 | [data-analysis](src/data-analysis) | 8002 | SQL data analysis with DuckDB |
 | [dify](src/dify) | 8003 | Dify AI workflow integration |
 | [docx](src/docx) | 8004 | Word document operations |
@@ -21,10 +21,10 @@ This monorepo contains multiple MCP servers built with [FastMCP](https://github.
 | [o3-search](src/o3-search) | 8008 | Deep research with OpenAI o3 |
 | [pdf](src/pdf) | 8009 | PDF extraction and manipulation |
 | [pptx](src/pptx) | 8010 | PowerPoint operations |
-| [preview](src/preview) | 8014 | HTML preview with live reload |
 | [shell](src/shell) | 8011 | Shell command execution |
 | [vectorstore](src/vectorstore) | 8012 | ChromaDB vector operations |
 | [xlsx](src/xlsx) | 8013 | Excel spreadsheet operations |
+| [preview](src/preview) | 8014 | HTML preview with live reload |
 
 ## Quick Start
 
