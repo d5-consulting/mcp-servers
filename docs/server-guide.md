@@ -113,6 +113,7 @@ Replace `<server-name>` and `<module_name>` with the appropriate values from the
 | o3-search | `o3_search` | 8008 | OpenAI o3 web search |
 | pdf | `pdf` | 8009 | PDF extraction and manipulation |
 | pptx | `pptx_mcp` | 8010 | PowerPoint operations |
+| preview | `preview` | 8014 | HTML preview with live reload |
 | shell | `shell` | 8011 | Shell command execution |
 | vectorstore | `vectorstore` | 8012 | ChromaDB vector operations |
 | xlsx | `xlsx` | 8013 | Excel spreadsheet operations |
