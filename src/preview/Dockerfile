@@ -1,20 +1,17 @@
 FROM python:3.12-slim
 
+RUN pip install --upgrade pip && pip install uv
+
+# Copy monorepo configuration from root
+COPY pyproject.toml uv.lock /app/
+COPY src/preview /app/src/preview
+
 WORKDIR /app
 
-# Install uv
-RUN pip install uv
+# Install using workspace dependencies
+RUN uv sync --frozen --package preview
 
-# Copy workspace files
-COPY ../../pyproject.toml ../../uv.lock ./
-COPY ../../src/core ./src/core
-COPY . ./src/preview
-
-# Install dependencies
-RUN uv sync --package preview
-
-# Expose ports
+# Expose ports (MCP: 8014, HTTP: 3000)
 EXPOSE 8014 3000
 
-# Run the server
 CMD ["uv", "run", "python", "-m", "preview"]

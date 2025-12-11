@@ -1,6 +1,5 @@
 """In-memory page storage with WebSocket client tracking for live reload."""
 
-import asyncio
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -26,13 +25,6 @@ class PageStore:
         self._pages: dict[str, Page] = {}
         self._websocket_clients: set[Any] = set()
         self._lock = threading.Lock()
-        self._async_lock: asyncio.Lock | None = None
-
-    def _get_async_lock(self) -> asyncio.Lock:
-        """Get or create async lock for the current event loop."""
-        if self._async_lock is None:
-            self._async_lock = asyncio.Lock()
-        return self._async_lock
 
     def add_page(
         self,

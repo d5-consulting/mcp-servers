@@ -129,6 +129,7 @@ async def livereload_websocket(websocket: WebSocket) -> None:
             # Keep connection alive, wait for messages (ping/pong)
             await websocket.receive_text()
     except Exception:
+        # Expected when client disconnects
         pass
     finally:
         store.unregister_client(websocket)
@@ -147,6 +148,7 @@ app = Starlette(routes=routes)
 # Server state
 _server_thread: threading.Thread | None = None
 _server_started = threading.Event()
+_server_start_lock = threading.Lock()
 _server_port: int = DEFAULT_HTTP_PORT
 
 
@@ -194,18 +196,23 @@ def ensure_server_running() -> str:
     if _server_started.is_set():
         return get_base_url()
 
-    port = get_http_port()
+    with _server_start_lock:
+        # Double-check after acquiring lock
+        if _server_started.is_set():
+            return get_base_url()
 
-    _server_thread = threading.Thread(
-        target=_run_server,
-        args=(port,),
-        daemon=True,
-        name="preview-http-server",
-    )
-    _server_thread.start()
+        port = get_http_port()
 
-    # Wait for server to start (with timeout)
-    _server_started.wait(timeout=5.0)
+        _server_thread = threading.Thread(
+            target=_run_server,
+            args=(port,),
+            daemon=True,
+            name="preview-http-server",
+        )
+        _server_thread.start()
+
+        # Wait for server to start (with timeout)
+        _server_started.wait(timeout=5.0)
 
     return get_base_url()
 

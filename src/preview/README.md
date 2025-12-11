@@ -162,6 +162,15 @@ cd src/preview
 uv run pytest -v
 ```
 
+## Security Considerations
+
+This server is designed for local development and trusted environments:
+
+- **No HTML sanitization**: Content is served as-is without XSS protection
+- **Only serve trusted content**: Do not serve user-generated or untrusted HTML
+- **Local use only**: Do not expose the HTTP server to untrusted networks
+- **Authentication**: No built-in authentication - consider a reverse proxy for multi-user environments
+
 ## Architecture
 
 The server runs two components:

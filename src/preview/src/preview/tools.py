@@ -80,7 +80,10 @@ def serve_file(
     if not file_path.is_file():
         return f"Error: Not a file: {path}"
 
-    content = file_path.read_text()
+    try:
+        content = file_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError:
+        return f"Error: File encoding not supported (expected UTF-8): {path}"
 
     if not name:
         name = file_path.stem
