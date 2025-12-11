@@ -95,8 +95,8 @@ async def index(request: Request) -> HTMLResponse:
         """
     else:
         page_list = "\n".join(
-            f'<li><a href="/pages/{p.name}">{p.title}</a> '
-            f"<small>({p.content_type}, updated {p.updated_at.strftime('%H:%M:%S')})</small></li>"
+            f'<li><a href="/pages/{escape(p.name)}">{escape(p.title)}</a> '
+            f"<small>({escape(p.content_type)}, updated {p.updated_at.strftime('%H:%M:%S')})</small></li>"
             for p in pages
         )
         html = f"""

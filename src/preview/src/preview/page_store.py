@@ -3,7 +3,8 @@
 import threading
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+
+from starlette.websockets import WebSocket, WebSocketDisconnect
 
 
 @dataclass
@@ -23,7 +24,7 @@ class PageStore:
 
     def __init__(self) -> None:
         self._pages: dict[str, Page] = {}
-        self._websocket_clients: set[Any] = set()
+        self._websocket_clients: set[WebSocket] = set()
         self._lock = threading.Lock()
 
     def add_page(
@@ -98,17 +99,17 @@ class PageStore:
         with self._lock:
             return len(self._pages)
 
-    def register_client(self, websocket: Any) -> None:
+    def register_client(self, websocket: WebSocket) -> None:
         """Register a WebSocket client for live reload."""
         with self._lock:
             self._websocket_clients.add(websocket)
 
-    def unregister_client(self, websocket: Any) -> None:
+    def unregister_client(self, websocket: WebSocket) -> None:
         """Unregister a WebSocket client."""
         with self._lock:
             self._websocket_clients.discard(websocket)
 
-    def get_clients(self) -> set[Any]:
+    def get_clients(self) -> set[WebSocket]:
         """Get a copy of current WebSocket clients."""
         with self._lock:
             return self._websocket_clients.copy()
@@ -124,8 +125,11 @@ class PageStore:
             try:
                 await client.send_text(page_name)
                 notified += 1
+            except WebSocketDisconnect:
+                # Client disconnected normally
+                self.unregister_client(client)
             except Exception:
-                # Client disconnected, will be cleaned up on next message
+                # Other connection errors (network issues, etc.)
                 self.unregister_client(client)
         return notified
 
