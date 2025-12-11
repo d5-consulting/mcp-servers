@@ -70,7 +70,7 @@ Add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
     "mcp-servers": {
       "command": "uv",
       "args": ["run", "python", "-m", "composite"],
-      "cwd": "/path/to/mcp-servers/src/composite",
+      "cwd": "/absolute/path/to/mcp-servers/src/composite",
       "env": {
         "GOOGLE_API_KEY": "your-key",
         "OPENAI_API_KEY": "your-key"
