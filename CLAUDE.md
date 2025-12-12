@@ -23,6 +23,50 @@ This repository follows [GitHub Flow](https://guides.github.com/introduction/flo
 - `refactor/` - Code refactoring
 - `test/` - Test updates
 
+### Claude Code Review Workflow
+
+After creating a PR, CI workflows will automatically run (typically completes within a few minutes). **You must wait for the review to complete and address any issues it identifies.**
+
+**Note**: Multiple workflows run on PRs (both must pass before merging):
+- **Run Tests** (`test.yml`): Validates code with pytest across all MCP servers
+- **Claude Code Review** (`claude-code-review.yml`): Provides automated code review feedback
+
+**Process:**
+1. After running `gh pr create`, wait for the CI workflows to complete
+2. Check the review status:
+   - Preferred: `gh pr checks`
+   - Alternative: `gh run list --limit 5`
+3. View the review results: `gh pr checks` shows status, or `gh run view <run-id>` for detailed output
+4. If issues are found, fix them and push updates to the PR branch
+5. Repeat until the review passes
+
+**Note**: The `gh` commands require [GitHub CLI](https://cli.github.com/) to be installed and authenticated. Alternatively, view workflow runs in the GitHub UI under the "Actions" tab.
+
+**Commands to monitor and address CI review:**
+```bash
+# Check all workflow runs for the current PR (preferred)
+gh pr checks
+
+# Or specify a PR number
+gh pr checks <pr-number>
+
+# List recent workflow runs
+gh run list --limit 5
+
+# Filter by specific workflow (useful when debugging a particular workflow failure)
+gh run list --workflow=claude-code-review.yml --branch=$(git branch --show-current) --limit 5
+gh run list --workflow=test.yml --branch=$(git branch --show-current) --limit 5
+
+# View details of a specific run (get run-id from gh pr checks output)
+gh run view <run-id>
+
+# View failed job logs
+gh run view <run-id> --log-failed
+
+# After fixing issues, commit and push
+git add . && git commit -m "fix: address review feedback" && git push
+```
+
 ### Use Git Worktrees for Changes
 
 Always create a new worktree for each branch to keep work isolated:
