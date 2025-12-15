@@ -1,16 +1,16 @@
 services:
-  o3:
+  file-management:
     build:
       context: ../..
-      dockerfile: src/o3/Dockerfile
+      dockerfile: src/file-management/Dockerfile
     ports:
-      - "8008:8008"
+      - "8005:8005"
     volumes:
       - mcp-workspace:/root/.mcp-servers/workspace
+      - ./src:/app/src/file-management/src
     environment:
       - TRANSPORT=sse
-      - PORT=8008
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - PORT=8005
 
 volumes:
   mcp-workspace:
