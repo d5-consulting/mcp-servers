@@ -1,16 +1,16 @@
 services:
-  pdf:
+  img2pptx:
     build:
       context: ../..
-      dockerfile: src/pdf/Dockerfile
+      dockerfile: src/img2pptx/Dockerfile
     ports:
-      - "8010:8010"
+      - "8007:8007"
     volumes:
       - mcp-workspace:/root/.mcp-servers/workspace
-      - ./src:/app/src/pdf/src
     environment:
       - TRANSPORT=sse
-      - PORT=8010
+      - PORT=8007
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
 
 volumes:
   mcp-workspace:

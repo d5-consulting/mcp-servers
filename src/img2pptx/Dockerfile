@@ -4,12 +4,12 @@ RUN pip install --upgrade pip && pip install uv
 
 COPY pyproject.toml uv.lock /app/
 COPY src/core /app/src/core
-COPY src/o3 /app/src/o3
+COPY src/img2pptx /app/src/img2pptx
 
 WORKDIR /app
 
-RUN uv sync --frozen --package o3
+RUN uv sync --frozen --package img2pptx
 
-EXPOSE 8009
+EXPOSE 8007
 
-CMD ["uv", "run", "python", "-m", "o3_search"]
+CMD ["uv", "run", "python", "-m", "img2pptx"]
