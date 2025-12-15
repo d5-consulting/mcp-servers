@@ -1,7 +1,7 @@
 [project]
-name = "file-management"
+name = "shell"
 version = "0.1.0"
-description = "MCP server for file read/write operations"
+description = "MCP server for shell command execution"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -12,7 +12,7 @@ dependencies = [
 core = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/file_management"]
+packages = ["src/shell"]
 
 [tool.pytest.ini_options]
 pythonpath = "src"

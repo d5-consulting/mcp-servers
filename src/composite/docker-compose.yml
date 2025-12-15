@@ -17,7 +17,6 @@ services:
       - data-analysis
       - dify
       - docx
-      - file-management
       - frontend-design
       - img2pptx
       - nano-banana
@@ -25,6 +24,7 @@ services:
       - pdf
       - pptx
       - preview
+      - shell
       - vectorstore
       - xlsx
     restart: unless-stopped
@@ -91,7 +91,7 @@ services:
     environment:
       - TRANSPORT=sse
       - HOST=0.0.0.0
-      - PORT=8014
+      - PORT=8015
     networks:
       - mcp-network
 
@@ -106,20 +106,6 @@ services:
       - TRANSPORT=sse
       - HOST=0.0.0.0
       - PORT=8004
-    networks:
-      - mcp-network
-
-  file-management:
-    image: file-management:latest
-    build:
-      context: ../..
-      dockerfile: src/file-management/Dockerfile
-    volumes:
-      - mcp-workspace:/root/.mcp-servers/workspace
-    environment:
-      - TRANSPORT=sse
-      - HOST=0.0.0.0
-      - PORT=8005
     networks:
       - mcp-network
 
@@ -153,6 +139,21 @@ services:
     networks:
       - mcp-network
 
+  shell:
+    image: shell:latest
+    build:
+      context: ../..
+      dockerfile: src/shell/Dockerfile
+    volumes:
+      - mcp-workspace:/root/.mcp-servers/workspace
+    environment:
+      - TRANSPORT=sse
+      - HOST=0.0.0.0
+      - PORT=8013
+      - ALLOWED_COMMANDS=${ALLOWED_COMMANDS:-}
+    networks:
+      - mcp-network
+
   vectorstore:
     image: vectorstore:latest
     build:
@@ -163,7 +164,7 @@ services:
     environment:
       - TRANSPORT=sse
       - HOST=0.0.0.0
-      - PORT=8013
+      - PORT=8014
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     networks:
       - mcp-network

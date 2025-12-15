@@ -1,16 +1,16 @@
 services:
-  file-management:
+  shell:
     build:
       context: ../..
-      dockerfile: src/file-management/Dockerfile
+      dockerfile: src/shell/Dockerfile
     ports:
-      - "8005:8005"
+      - "8013:8013"
     volumes:
       - mcp-workspace:/root/.mcp-servers/workspace
-      - ./src:/app/src/file-management/src
     environment:
       - TRANSPORT=sse
-      - PORT=8005
+      - PORT=8013
+      - ALLOWED_COMMANDS=${ALLOWED_COMMANDS:-}
 
 volumes:
   mcp-workspace:
