@@ -5,7 +5,7 @@ from fastmcp import FastMCP
 
 load_dotenv()
 
-mcp = FastMCP(os.getenv("NAME", "file-management"))
+mcp = FastMCP(os.getenv("NAME", "shell"))
 
 from . import server, tools  # noqa: F401, E402
 

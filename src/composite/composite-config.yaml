@@ -26,14 +26,8 @@ servers:
     module: docx
     description: word document operations
 
-  file-management:
-    enabled: false
-    prefix: file
-    module: file_management
-    description: file read/write operations
-
   pptx:
-    enabled: true
+    enabled: false
     prefix: pptx
     module: pptx_mcp
     description: powerpoint operations
@@ -85,4 +79,10 @@ servers:
     prefix: preview
     module: preview
     description: HTML preview server with live reload
+
+  shell:
+    enabled: true
+    prefix: shell
+    module: shell
+    description: shell command execution with allowlist security
 
