@@ -27,7 +27,7 @@ servers:
     description: word document operations
 
   pptx:
-    enabled: true
+    enabled: false
     prefix: pptx
     module: pptx_mcp
     description: powerpoint operations
@@ -63,7 +63,7 @@ servers:
     description: Dify workflow integration
 
   img2pptx:
-    enabled: true
+    enabled: false
     prefix: img2pptx
     module: img2pptx
     description: Convert images to PPTX using GPT-5.2
@@ -81,7 +81,7 @@ servers:
     description: HTML preview server with live reload
 
   shell:
-    enabled: false
+    enabled: true
     prefix: shell
     module: shell
     description: shell command execution with allowlist security
